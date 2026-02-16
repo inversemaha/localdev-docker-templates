@@ -1,20 +1,37 @@
-# Clean Engineering Local Environment
 
-A professional, containerized local development environment for full-stack engineering teams. This template provides isolated Docker-based development stacks for **Laravel (PHP)**, **FastAPI (Python)**, and **React (Node.js)** projects while keeping your host machine completely clean.
+# linuxmint-multidb-webstack
 
-All dependencies, databases, and services run inside containers. Your host only needs Docker and Make.
+**A modern local web development stack for Linux Mint:**
+Run PHP, Python, Node, and Go apps in Docker containers, while all databases (MySQL, PostgreSQL, MongoDB, Redis, etc.) run natively on your host for maximum performance and realism. Includes ready-to-use templates for Laravel, FastAPI, React, and Golang, with Traefik for local domain routing.
 
 ---
 
-## Features
+## Local Database Installation
 
-- **100% Containerized** — Zero host dependencies, no version conflicts
-- **Local Domains** — Access projects via `laravel.local`, `fastapi.local`, `react.local` using Traefik
-- **Hot Reload** — Live code synchronization with Docker volumes
-- **Background Workers** — Laravel Queue workers with Supervisor
-- **Managed Databases** — MySQL, PostgreSQL, MongoDB, Redis per project
-- **Universal Makefile** — Single command interface for all projects
-- **Network Isolation** — Per-project networks with shared Traefik reverse proxy
+For scripts and instructions to install and configure MySQL, PostgreSQL, MongoDB, and Redis on Linux Mint, see the reference repository:
+
+👉 [inversemaha/linuxmint-multidb-webstack](https://github.com/inversemaha/linuxmint-multidb-webstack)
+
+---
+
+A professional local development environment where **Docker runs app containers only** and **all databases run natively on the host machine**.
+
+---
+
+## Philosophy
+
+```
+Docker         =  App runtimes ONLY (PHP, Python, Node, Go)
+Local machine  =  All databases (MySQL, PostgreSQL, MongoDB, Redis)
+Traefik        =  Local domain routing (*.local)
+```
+
+**Why not databases in Docker?**
+- Better disk I/O performance (no volume overhead)
+- Easier debugging with native CLI tools
+- No data loss from accidental `docker compose down -v`
+- Single DB instance shared across projects
+- Mirrors production architecture (app servers separate from DB servers)
 
 ---
 
@@ -22,301 +39,221 @@ All dependencies, databases, and services run inside containers. Your host only 
 
 ```
 LOCAL-MACHINE-SETUP-LINUX-MINT/
-├── setup_local_machine.sh          # Host machine setup (Docker, NVM)
-├── setup_projectwise_template.sh   # Generate project templates
+├── setup_local_machine.sh          # Install Docker + NVM (one-time)
+├── setup_projectwise_template.sh   # Generate workspace templates
 ├── Makefile.sh                     # Universal project commands
 └── README.md                       # This file
 ```
 
-### Generated Output Structure
+### Generated Workspace Structure
 
-Running `setup_projectwise_template.sh` generates a complete project workspace at `/media/bot/INT-LOCAL/docker-dev-workspace/` with the following structure:
+Running `setup_projectwise_template.sh` creates:
 
 ```
-docker-dev-workspace/   # ⚠️ Generated output — not part of this repo
-├── .env.example                    # Environment variables template
-├── README.md                       # Generated project README
+/media/bot/INT-LOCAL/docker-dev-workspace/
+├── create_project.sh               # Scaffold new projects from templates
+├── README.md                       # Workspace README with DB config guide
+│
+├── templates/                      # Base templates (don't edit directly)
+│   ├── laravel/                    # PHP 8.3 + Nginx + Supervisor
+│   │   ├── Dockerfile
+│   │   ├── docker-compose.yml
+│   │   ├── .env.example
+│   │   ├── supervisord.conf
+│   │   └── nginx/default.conf
+│   ├── fastapi/                    # Python 3.14 + Uvicorn
+│   │   ├── Dockerfile
+│   │   ├── docker-compose.yml
+│   │   ├── .env.example
+│   │   └── main.py
+│   ├── react/                      # Node 24 + Vite
+│   │   ├── Dockerfile
+│   │   ├── docker-compose.yml
+│   │   └── .env.example
+│   └── golang/                     # Go 1.22
+│       ├── Dockerfile
+│       ├── docker-compose.yml
+│       └── .env.example
 │
 ├── docker/
-│   └── traefik/
-│       ├── docker-compose.yml      # Traefik reverse proxy
-│       └── traefik.yml             # Traefik static configuration
+│   └── traefik/                    # Reverse proxy for local domains
+│       ├── docker-compose.yml
+│       └── traefik.yml
 │
-└── projects/
-    ├── laravel/
-    │   ├── Dockerfile              # PHP 8.3-FPM with extensions
-    │   ├── docker-compose.yml      # Nginx, PHP-FPM, MySQL, Redis
-    │   ├── supervisord.conf        # Queue worker configuration
-    │   └── nginx/
-    │       └── default.conf        # Nginx virtual host
-    │
-    ├── fastapi/
-    │   ├── Dockerfile              # Python 3.11 with ML libraries
-    │   └── docker-compose.yml      # FastAPI, PostgreSQL, MongoDB
-    │
-    └── react/
-        ├── Dockerfile              # Node 20 with Vite
-        └── docker-compose.yml      # React development server
+└── projects/                       # Your actual projects (created by create_project.sh)
+    ├── my-blog/                    # Example: cloned from laravel template
+    ├── ml-api/                     # Example: cloned from fastapi template
+    └── dashboard/                  # Example: cloned from react template
 ```
 
 ---
 
 ## Getting Started
 
-### Step 1: Setup Host Machine
-
-Run the system setup script to install Docker, Docker Compose, and NVM:
+### Step 1: Setup Host Machine (one-time)
 
 ```bash
 chmod +x setup_local_machine.sh
 ./setup_local_machine.sh
 ```
 
-This script will:
+Installs: Docker CE, Docker Compose plugin, NVM.
 
-- Install Docker CE and Docker Compose plugin
-- Add your user to the `docker` group
-- Install NVM (Node Version Manager)
-
-> **Important:** After the script completes, logout and login again (or reboot) for Docker group changes to take effect.
-
-Verify installation:
+> **Important:** Logout and login after running this for Docker group permissions.
 
 ```bash
 docker --version
 docker compose version
 ```
 
-### Step 2: Setup Project Template
-
-Generate the project structure and configuration files:
+### Step 2: Generate Workspace Templates
 
 ```bash
 chmod +x setup_projectwise_template.sh
 ./setup_projectwise_template.sh
 ```
 
-This creates:
-
-- Project folders with Docker configurations
-- Traefik reverse proxy setup
-- Environment template file
-
-Copy the environment file and adjust ports if needed:
-
-```bash
-cp .env.example .env
-```
-
-Default ports:
-
-| Service    | Port  |
-|------------|-------|
-| Laravel    | 8080  |
-| FastAPI    | 8000  |
-| React      | 5173  |
-| MySQL      | 3307  |
-| PostgreSQL | 5432  |
-| MongoDB    | 27017 |
-
 ### Step 3: Configure Local Domains
 
-Add the following entries to your `/etc/hosts` file:
+```bash
+sudo sh -c 'echo "127.0.0.1 my-blog.local ml-api.local dashboard.local" >> /etc/hosts'
+```
+
+### Step 4: Start Traefik
 
 ```bash
-sudo nano /etc/hosts
+cd /media/bot/INT-LOCAL/docker-dev-workspace
+cd docker/traefik && docker compose up -d
 ```
 
-Add this line:
+Dashboard: http://localhost:8080
 
-```
-127.0.0.1 laravel.local fastapi.local react.local
-```
-
-Save and exit (`Ctrl+O`, `Enter`, `Ctrl+X`).
-
-### Step 4: Start Traefik Reverse Proxy
-
-Start the Traefik container before running projects:
+### Step 5: Create & Run a Project
 
 ```bash
-make traefik-up
+cd /media/bot/INT-LOCAL/docker-dev-workspace
+
+# Scaffold from template
+./create_project.sh laravel my-blog
+./create_project.sh fastapi ml-api
+./create_project.sh react dashboard
+./create_project.sh golang api-gateway
+
+# Edit DB credentials, then start
+cd projects/my-blog
+nano .env
+docker compose up -d --build
 ```
 
-Access the Traefik dashboard at: http://localhost:8080
+---
+
+## How Containers Connect to Local Databases
+
+All docker-compose files include:
+
+```yaml
+extra_hosts:
+  - "host.docker.internal:host-gateway"
+```
+
+This maps `host.docker.internal` inside the container to your host machine's IP. App configs use it as the DB host:
+
+```env
+# Laravel
+DB_HOST=host.docker.internal
+
+# FastAPI
+DATABASE_URL=postgresql://postgres:root@host.docker.internal:5432/mydb
+
+# Golang
+DATABASE_URL=postgresql://postgres:root@host.docker.internal:5432/mydb
+```
+
+> **Prerequisite:** Your local databases must listen on `0.0.0.0` (not just `127.0.0.1`).
+> See the generated workspace README for detailed bind-address configuration per DB.
 
 ---
 
 ## Using the Makefile
 
-The Makefile provides a dynamic interface for managing any project without modification.
+Copy `Makefile.sh` to the workspace as `Makefile`, or use it from this repo.
 
-### Core Variables
+### Syntax: `make <command> P=<project-name>`
 
-| Variable       | Description            | Default                        |
-|----------------|------------------------|--------------------------------|
-| `PROJECT_PATH` | Path to project folder | `.` (current directory)        |
-| `CONTAINER`    | Target container name  | Auto-detected based on project |
+### Docker Compose
 
-### Global Commands
+| Command | Description |
+|---------|-------------|
+| `make up P=my-blog` | Build & start project |
+| `make start P=my-blog` | Start (no rebuild) |
+| `make stop P=my-blog` | Stop containers |
+| `make down P=my-blog` | Remove containers |
+| `make restart P=my-blog` | Stop + rebuild + start |
+| `make ps P=my-blog` | Show container status |
+| `make logs P=my-blog` | Follow all logs |
+| `make logs-app P=my-blog` | Follow app container logs |
 
-Start a project (build if needed):
+### Shell Access
 
-```bash
-make up PROJECT_PATH=projects/laravel
-make up PROJECT_PATH=projects/fastapi
-make up PROJECT_PATH=projects/react
-```
+| Command | Description |
+|---------|-------------|
+| `make shell P=my-blog` | Open `sh` in app container |
+| `make bash P=my-blog` | Open `bash` in app container |
 
-Start existing containers (no build):
+### Traefik
 
-```bash
-make start PROJECT_PATH=projects/laravel
-```
+| Command | Description |
+|---------|-------------|
+| `make traefik-up` | Start Traefik |
+| `make traefik-down` | Stop Traefik |
+| `make traefik-logs` | Follow Traefik logs |
 
-Stop containers:
+### Laravel / PHP
 
-```bash
-make stop PROJECT_PATH=projects/laravel
-```
+| Command | Description |
+|---------|-------------|
+| `make migrate P=my-blog` | Run migrations |
+| `make migrate-fresh P=my-blog` | Fresh migrate + seed |
+| `make seed P=my-blog` | Run seeders |
+| `make artisan P=my-blog CMD="route:list"` | Any artisan command |
+| `make composer P=my-blog CMD="require sanctum"` | Any composer command |
 
-Remove containers:
+### FastAPI / Python
 
-```bash
-make down PROJECT_PATH=projects/laravel
-```
+| Command | Description |
+|---------|-------------|
+| `make test P=ml-api` | Run pytest |
+| `make pip P=ml-api CMD="install pandas"` | Run pip |
+| `make python P=ml-api CMD="manage.py"` | Run python |
 
-View logs:
+### React / Node
 
-```bash
-make logs PROJECT_PATH=projects/laravel
-```
+| Command | Description |
+|---------|-------------|
+| `make install P=dashboard` | npm install |
+| `make build P=dashboard` | npm run build |
+| `make dev P=dashboard` | npm run dev |
+| `make npm P=dashboard CMD="run lint"` | Any npm command |
 
-Access container shell:
+### Golang
 
-```bash
-make bash PROJECT_PATH=projects/laravel
-# or
-make shell PROJECT_PATH=projects/fastapi  # Uses sh instead of bash
-```
+| Command | Description |
+|---------|-------------|
+| `make go-run P=api-gw` | go run . |
+| `make go-build P=api-gw` | go build |
+| `make go-test P=api-gw` | go test ./... |
 
-Check container status:
+### Utility
 
-```bash
-make ps PROJECT_PATH=projects/laravel
-```
-
-### Laravel-Specific Commands
-
-Run database migrations:
-
-```bash
-make migrate PROJECT_PATH=projects/laravel
-```
-
-Fresh migration with seeders:
-
-```bash
-make migrate-fresh PROJECT_PATH=projects/laravel
-```
-
-Seed database:
-
-```bash
-make seed PROJECT_PATH=projects/laravel
-```
-
-Run Artisan commands:
-
-```bash
-make artisan PROJECT_PATH=projects/laravel CMD="route:list"
-make artisan PROJECT_PATH=projects/laravel CMD="tinker"
-```
-
-Run Composer commands:
-
-```bash
-make composer PROJECT_PATH=projects/laravel CMD="install"
-make composer PROJECT_PATH=projects/laravel CMD="require laravel/sanctum"
-```
-
-### FastAPI-Specific Commands
-
-Run pytest:
-
-```bash
-make test PROJECT_PATH=projects/fastapi
-```
-
-Install Python packages:
-
-```bash
-make pip PROJECT_PATH=projects/fastapi CMD="install pandas numpy"
-```
-
-### React-Specific Commands
-
-Install NPM packages:
-
-```bash
-make install PROJECT_PATH=projects/react
-```
-
-Run development server:
-
-```bash
-make dev PROJECT_PATH=projects/react
-```
-
-Build for production:
-
-```bash
-make build PROJECT_PATH=projects/react
-```
-
-Run NPM scripts:
-
-```bash
-make npm PROJECT_PATH=projects/react CMD="run lint"
-make npm PROJECT_PATH=projects/react CMD="run test"
-```
-
-### Traefik Commands
-
-Start Traefik:
-
-```bash
-make traefik-up
-```
-
-Stop Traefik:
-
-```bash
-make traefik-down
-```
-
-View Traefik logs:
-
-```bash
-make traefik-logs
-```
+| Command | Description |
+|---------|-------------|
+| `make list` | List all projects & templates |
+| `make clean` | Prune unused Docker resources |
+| `make clean-all` | Full Docker cleanup (images too) |
 
 ---
 
-## Accessing Your Applications
-
-Once projects are running, access them via:
-
-| Project           | Local Domain             | Container Direct Port    |
-|-------------------|--------------------------|--------------------------|
-| Laravel           | http://laravel.local      | http://localhost:8080     |
-| FastAPI           | http://fastapi.local      | http://localhost:8000     |
-| React             | http://react.local        | http://localhost:5173     |
-| Traefik Dashboard | —                        | http://localhost:8080     |
-
----
-
-## Architecture Overview
+## Architecture
 
 ### Laravel Stack
 
@@ -325,20 +262,14 @@ Once projects are running, access them via:
 │   Traefik   │────▶│    Nginx    │────▶│  PHP-FPM    │
 │   :80       │     │   :80       │     │   :9000     │
 └─────────────┘     └─────────────┘     └──────┬──────┘
-                                               │
-                      ┌─────────────┐    ┌─────┴─────┐
-                      │    Redis    │    │   MySQL   │
-                      │   :6379    │    │   :3306   │
-                      └─────────────┘    └───────────┘
+                          Docker                │
+─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─
+                       Local Machine            │
+                      ┌─────────────┐    ┌──────┴──────┐
+                      │    Redis    │    │    MySQL    │
+                      │   :6379    │    │   :3306    │
+                      └─────────────┘    └─────────────┘
 ```
-
-**Components:**
-
-- **Nginx** — Web server handling HTTP requests
-- **PHP-FPM** — PHP processor with extensions (PDO, Redis, GD, Xdebug)
-- **Supervisor** — Manages PHP-FPM and Queue Workers
-- **MySQL** — Database server
-- **Redis** — Cache and session store
 
 ### FastAPI Stack
 
@@ -347,7 +278,9 @@ Once projects are running, access them via:
 │   Traefik   │────▶│   FastAPI   │
 │   :80       │     │   Uvicorn   │
 └─────────────┘     └──────┬──────┘
-                           │
+                     Docker │
+─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─ ─ ─ ─ ─ ─
+                  Local Machine
               ┌────────────┼────────────┐
               ▼            ▼            ▼
         ┌──────────┐  ┌─────────┐  ┌─────────┐
@@ -356,14 +289,6 @@ Once projects are running, access them via:
         └──────────┘  └─────────┘  └─────────┘
 ```
 
-**Components:**
-
-- **FastAPI** — Python ASGI application
-- **Uvicorn** — ASGI server
-- **PostgreSQL** — Relational database
-- **MongoDB** — Document database
-- **Pre-installed ML libs** — pandas, numpy, scikit-learn, torch, transformers
-
 ### React Stack
 
 ```
@@ -371,50 +296,26 @@ Once projects are running, access them via:
 │   Traefik   │────▶│    Vite     │
 │   :80       │     │   :5173     │
 └─────────────┘     └─────────────┘
+                      (no DB needed)
 ```
 
-**Components:**
+### Golang Stack
 
-- **Vite** — Next-generation frontend tooling
-- **Node 20** — JavaScript runtime
-- **Hot Module Replacement** — Instant code updates
-
----
-
-## Best Practices
-
-### Host Machine Cleanliness
-
-- No PHP, Python, Node, or database servers installed on host
-- All development tools run inside containers
-- Version conflicts eliminated through isolation
-
-### Project Isolation
-
-- Each project has independent containers and networks
-- Database data persists in named volumes
-- Projects can run simultaneously without port conflicts
-
-### Containerized Dependencies
-
-- **Laravel:** PHP 8.3, Composer, extensions locked in Dockerfile
-- **FastAPI:** Python 3.11, specific package versions in requirements
-- **React:** Node 20, NPM packages in container image
-
-### Extensibility
-
-Add new projects by:
-
-1. Creating a `projects/newproject/` folder
-2. Adding `Dockerfile` and `docker-compose.yml`
-3. Adding Traefik labels for routing
-4. Updating the Makefile with project-specific commands (optional)
-
-### Version Control Friendly
-
-- No build artifacts or dependencies in repository
-- Environment variables in `.env` (gitignored)
-- Only configuration and scripts committed
+```
+┌─────────────┐     ┌─────────────┐
+│   Traefik   │────▶│   Go App   │
+│   :80       │     │   :8090     │
+└─────────────┘     └──────┬──────┘
+                     Docker │
+─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─ ─ ─
+                  Local Machine
+              ┌────────────┴────────────┐
+              ▼                         ▼
+        ┌──────────┐             ┌─────────┐
+        │PostgreSQL│             │  Redis  │
+        │  :5432   │             │  :6379  │
+        └──────────┘             └─────────┘
+```
 
 ---
 
@@ -422,9 +323,7 @@ Add new projects by:
 
 ### Docker Permission Denied
 
-**Error:** `permission denied while trying to connect to Docker daemon`
-
-**Solution:** Logout and login again after running `setup_local_machine.sh`, or run:
+Logout and login after `setup_local_machine.sh`, or:
 
 ```bash
 newgrp docker
@@ -432,118 +331,39 @@ newgrp docker
 
 ### Port Already in Use
 
-**Error:** `bind: address already in use`
-
-**Solution:** Check what's using the port:
-
 ```bash
 sudo lsof -i :80
-sudo lsof -i :8080
+sudo systemctl stop apache2 nginx  # if conflicting
 ```
 
-Stop conflicting services:
+### Container Can't Reach Local DB
 
-```bash
-sudo systemctl stop apache2
-sudo systemctl stop nginx
-```
-
-### Container Not Found
-
-**Error:** `No such container: laravel_app`
-
-**Solution:** Ensure containers are built and running:
-
-```bash
-make up PROJECT_PATH=projects/laravel
-```
+1. Check DB is listening on `0.0.0.0`:
+   ```bash
+   sudo ss -tlnp | grep -E '3306|5432|27017|6379'
+   ```
+2. Check DB allows connections from Docker subnet (`172.x.x.x`)
+3. Test from inside container:
+   ```bash
+   make bash P=my-blog
+   apt-get update && apt-get install -y default-mysql-client
+   mysql -h host.docker.internal -u dev -pdev123
+   ```
 
 ### Changes Not Reflecting
 
-**Solution:** Rebuild containers after Dockerfile changes:
+Rebuild after Dockerfile changes:
 
 ```bash
-make down PROJECT_PATH=projects/laravel
-make up PROJECT_PATH=projects/laravel
-```
-
-### Laravel Storage Permission Errors
-
-**Solution:** Fix permissions inside container:
-
-```bash
-make bash PROJECT_PATH=projects/laravel
-chmod -R 777 storage bootstrap/cache
-exit
-```
-
-### Network Connectivity Issues
-
-Recreate the shared Traefik network:
-
-```bash
-make traefik-down
-docker network rm traefik_net
-docker network create traefik_net
-make traefik-up
+make down P=my-blog
+make up P=my-blog
 ```
 
 ### Complete Reset
 
-Stop everything and clean Docker:
-
 ```bash
-# Stop all projects
-make down PROJECT_PATH=projects/laravel
-make down PROJECT_PATH=projects/fastapi
-make down PROJECT_PATH=projects/react
+make down P=my-blog
+make down P=ml-api
 make traefik-down
-
-# Clean Docker system
-make clean        # Remove unused containers/networks
-make clean-all    # Full cleanup including volumes (WARNING: data loss)
+make clean          # Remove unused containers/networks
 ```
-
----
-
-## Environment Variables
-
-Create `.env` file from `.env.example`:
-
-```bash
-cp .env.example .env
-```
-
-Available variables:
-
-```bash
-# Application Ports (host side)
-LARAVEL_PORT=8080
-FASTAPI_PORT=8000
-REACT_PORT=5173
-
-# Database Ports (host side)
-MYSQL_PORT=3307
-POSTGRES_PORT=5432
-MONGO_PORT=27017
-```
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/new-feature`
-3. Commit changes: `git commit -am 'Add new feature'`
-4. Push to branch: `git push origin feature/new-feature`
-5. Submit Pull Request
-
----
-
-## License
-
-MIT License — see `LICENSE` file for details.
-
-<p align="center">
-  Built for engineers who value clean, reproducible development environments.
-</p>

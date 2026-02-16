@@ -1,73 +1,86 @@
-# Dynamic Makefile for any project
+# ==============================================================================
+# Makefile — Docker Dev Workspace Manager
+# ==============================================================================
+#
 # Usage:
-#   make up PROJECT_PATH=projects/laravel
-#   make logs PROJECT_PATH=projects/fastapi
-#   make shell PROJECT_PATH=projects/react CONTAINER=react_app
+#   make up P=my-blog                     # Build & start a project
+#   make logs P=my-blog                   # Follow logs
+#   make shell P=my-blog                  # Shell into app container
+#   make artisan P=my-blog CMD=migrate    # Run artisan command
+#   make pip P=ml-api CMD="install pandas" # Run pip inside container
+#
+# Architecture:
+#   Docker  = App containers ONLY
+#   Local   = All databases (MySQL, PostgreSQL, MongoDB, Redis)
+#
+# ==============================================================================
 
 # ------------------------------
 # Variables
 # ------------------------------
-PROJECT_PATH?=.
+WORKSPACE?=/media/bot/INT-LOCAL/docker-dev-workspace
+P?=
 CONTAINER?=app
-TRAEFIK_PATH?=docker/traefik
+TRAEFIK_PATH?=$(WORKSPACE)/docker/traefik
 
-# Auto-detect container names based on PROJECT_PATH
-ifeq ($(PROJECT_PATH),projects/laravel)
-	CONTAINER=laravel_app
-else ifeq ($(PROJECT_PATH),projects/fastapi)
-	CONTAINER=fastapi_app
-else ifeq ($(PROJECT_PATH),projects/react)
-	CONTAINER=react_app
+# Derive compose file from project name
+ifneq ($(P),)
+  PROJECT_PATH=$(WORKSPACE)/projects/$(P)
+  COMPOSE=docker compose -f $(PROJECT_PATH)/docker-compose.yml
+else
+  COMPOSE=@echo "ERROR: specify project with P=<name>" && exit 1 &&
 endif
 
 # ------------------------------
 # Phony Targets
 # ------------------------------
-.PHONY: up start stop down restart logs shell bash ps clean traefik-up traefik-down migrate seed test install build
+.PHONY: up start stop down restart logs shell bash ps \
+        traefik-up traefik-down traefik-logs \
+        migrate migrate-fresh seed artisan composer \
+        test pip npm install build dev \
+        go-run go-build \
+        clean clean-all list
 
-# ------------------------------
-# Docker Compose Commands
-# ------------------------------
+# ==============================================================================
+# Docker Compose — Generic (works with any project)
+# ==============================================================================
 
 up:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml up -d --build
+	$(COMPOSE) up -d --build
 
 start:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml up -d
+	$(COMPOSE) up -d
 
 stop:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml stop
+	$(COMPOSE) stop
 
 down:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml down
-
-down-volumes:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml down -v
+	$(COMPOSE) down
 
 restart: down up
 
 ps:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml ps
+	$(COMPOSE) ps
 
 logs:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml logs -f
+	$(COMPOSE) logs -f
 
-logs-container:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml logs -f $(CONTAINER)
+logs-app:
+	$(COMPOSE) logs -f $(CONTAINER)
 
-# ------------------------------
+# ==============================================================================
 # Shell Access
-# ------------------------------
+# ==============================================================================
 
 shell:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml exec $(CONTAINER) sh
+	$(COMPOSE) exec $(CONTAINER) sh
 
 bash:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml exec $(CONTAINER) bash
+	$(COMPOSE) exec $(CONTAINER) bash
 
-# ------------------------------
-# Traefik Commands
-# ------------------------------
+# ==============================================================================
+# Traefik
+# ==============================================================================
 
 traefik-up:
 	docker compose -f $(TRAEFIK_PATH)/docker-compose.yml up -d
@@ -78,49 +91,78 @@ traefik-down:
 traefik-logs:
 	docker compose -f $(TRAEFIK_PATH)/docker-compose.yml logs -f
 
-# ------------------------------
-# Project-Specific Commands
-# ------------------------------
+# ==============================================================================
+# Laravel / PHP Commands
+# ==============================================================================
 
-# Laravel
 migrate:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml exec $(CONTAINER) php artisan migrate
+	$(COMPOSE) exec $(CONTAINER) php artisan migrate
 
 migrate-fresh:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml exec $(CONTAINER) php artisan migrate:fresh --seed
+	$(COMPOSE) exec $(CONTAINER) php artisan migrate:fresh --seed
 
 seed:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml exec $(CONTAINER) php artisan db:seed
+	$(COMPOSE) exec $(CONTAINER) php artisan db:seed
 
 artisan:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml exec $(CONTAINER) php artisan $(CMD)
+	$(COMPOSE) exec $(CONTAINER) php artisan $(CMD)
 
 composer:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml exec $(CONTAINER) composer $(CMD)
+	$(COMPOSE) exec $(CONTAINER) composer $(CMD)
 
-# FastAPI / Python
+# ==============================================================================
+# FastAPI / Python Commands
+# ==============================================================================
+
 test:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml exec $(CONTAINER) pytest
+	$(COMPOSE) exec $(CONTAINER) pytest
 
 pip:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml exec $(CONTAINER) pip $(CMD)
+	$(COMPOSE) exec $(CONTAINER) pip $(CMD)
 
-# React / Node
+python:
+	$(COMPOSE) exec $(CONTAINER) python $(CMD)
+
+# ==============================================================================
+# React / Node Commands
+# ==============================================================================
+
 install:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml exec $(CONTAINER) npm install
+	$(COMPOSE) exec $(CONTAINER) npm install
 
 build:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml exec $(CONTAINER) npm run build
+	$(COMPOSE) exec $(CONTAINER) npm run build
 
 dev:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml exec $(CONTAINER) npm run dev
+	$(COMPOSE) exec $(CONTAINER) npm run dev
 
 npm:
-	docker compose -f $(PROJECT_PATH)/docker-compose.yml exec $(CONTAINER) npm $(CMD)
+	$(COMPOSE) exec $(CONTAINER) npm $(CMD)
 
-# ------------------------------
+# ==============================================================================
+# Golang Commands
+# ==============================================================================
+
+go-run:
+	$(COMPOSE) exec $(CONTAINER) go run .
+
+go-build:
+	$(COMPOSE) exec $(CONTAINER) go build -o server .
+
+go-test:
+	$(COMPOSE) exec $(CONTAINER) go test ./...
+
+# ==============================================================================
 # Utility
-# ------------------------------
+# ==============================================================================
+
+# List all projects
+list:
+	@echo "Projects:"
+	@ls -1 $(WORKSPACE)/projects 2>/dev/null || echo "  (none yet)"
+	@echo ""
+	@echo "Templates:"
+	@ls -1 $(WORKSPACE)/templates
 
 clean:
 	docker system prune -f
