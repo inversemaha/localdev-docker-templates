@@ -34,27 +34,29 @@ echo ""
 mkdir -p "$TEMPLATE_DIR"
 cd "$TEMPLATE_DIR"
 
-# Command-line argument for project type
-PROJECT_TYPE="$1"
 
-if [[ -z "$PROJECT_TYPE" ]]; then
-  echo "Usage: $0 <project-type>"
+# Command-line arguments for project type and project name
+PROJECT_TYPE="$1"
+PROJECT_NAME="$2"
+
+if [[ -z "$PROJECT_TYPE" || -z "$PROJECT_NAME" ]]; then
+  echo "Usage: $0 <project-type> <project-name>"
   echo "Available project types: fastapi, laravel, react, golang"
   exit 1
 fi
 
 case "$PROJECT_TYPE" in
   fastapi)
-    mkdir -p templates/fastapi
+    mkdir -p projects/fastapi
     ;;
   laravel)
-    mkdir -p templates/laravel/nginx
+    mkdir -p projects/laravel/nginx
     ;;
   react)
-    mkdir -p templates/react
+    mkdir -p projects/react
     ;;
   golang)
-    mkdir -p templates/golang
+    mkdir -p projects/golang
     ;;
   *)
     echo "Unknown project type: $PROJECT_TYPE"
@@ -152,43 +154,43 @@ cd projects/my-app && docker compose up -d --build  # Start any project
 ```
 READMEEOF
 
-# ==============================================================================
-# CREATE PROJECT SCRIPT — clones a template into projects/<name>
+# ============================================================================== 
+# CREATE PROJECT SCRIPT — clones a template into projects/<type>/<project-name>
 # ==============================================================================
 cat <<'CPEOF' > "$TEMPLATE_DIR/create_project.sh"
 #!/bin/bash
 set -e
 
 WORKSPACE_DIR="$(cd "$(dirname "$0")" && pwd)"
-TEMPLATES_DIR="$WORKSPACE_DIR/templates"
+TEMPLATES_DIR="$WORKSPACE_DIR/projects"
 PROJECTS_DIR="$WORKSPACE_DIR/projects"
 
-TEMPLATE="$1"
+TEMPLATE_TYPE="$1"
 PROJECT_NAME="$2"
 
-if [[ -z "$TEMPLATE" || -z "$PROJECT_NAME" ]]; then
-  echo "Usage: ./create_project.sh <template> <project-name>"
+if [[ -z "$TEMPLATE_TYPE" || -z "$PROJECT_NAME" ]]; then
+  echo "Usage: ./create_project.sh <project-type> <project-name>"
   echo ""
-  echo "Available templates:"
-  ls -1 "$TEMPLATES_DIR"
+  echo "Available project types:"
+  ls -1 "$TEMPLATES_DIR" | grep -v traefik
   exit 1
 fi
 
-if [[ ! -d "$TEMPLATES_DIR/$TEMPLATE" ]]; then
-  echo "ERROR: Template '$TEMPLATE' not found."
-  echo "Available: $(ls -1 "$TEMPLATES_DIR" | tr '\n' ' ')"
+if [[ ! -d "$TEMPLATES_DIR/$TEMPLATE_TYPE" ]]; then
+  echo "ERROR: Template type '$TEMPLATE_TYPE' not found."
+  echo "Available: $(ls -1 "$TEMPLATES_DIR" | grep -v traefik | tr '\n' ' ')"
   exit 1
 fi
 
-TARGET="$PROJECTS_DIR/$PROJECT_NAME"
+TARGET="$PROJECTS_DIR/$TEMPLATE_TYPE/$PROJECT_NAME"
 if [[ -d "$TARGET" ]]; then
   echo "ERROR: Project '$PROJECT_NAME' already exists at $TARGET"
   exit 1
 fi
 
-echo "Creating project '$PROJECT_NAME' from template '$TEMPLATE'..."
-mkdir -p "$PROJECTS_DIR"
-cp -r "$TEMPLATES_DIR/$TEMPLATE" "$TARGET"
+echo "Creating project '$PROJECT_NAME' of type '$TEMPLATE_TYPE'..."
+mkdir -p "$PROJECTS_DIR/$TEMPLATE_TYPE"
+cp -r "$TEMPLATES_DIR/$TEMPLATE_TYPE" "$TARGET"
 
 # Replace placeholder container names with project-specific names
 find "$TARGET" -type f -name '*.yml' -exec sed -i "s/{{PROJECT_NAME}}/$PROJECT_NAME/g" {} +
@@ -214,9 +216,10 @@ chmod +x "$TEMPLATE_DIR/create_project.sh"
 # ==============================================================================
 # LARAVEL TEMPLATE (Nginx + PHP-FPM → Local MySQL + Redis)
 # ==============================================================================
-LARAVEL_DIR="$TEMPLATE_DIR/templates/laravel"
-
-cat <<'EOF' > $LARAVEL_DIR/.env.example
+if [[ "$PROJECT_TYPE" == "laravel" ]]; then
+  LARAVEL_DIR="$TEMPLATE_DIR/projects/laravel"
+  mkdir -p "$LARAVEL_DIR/nginx"
+  cat <<'EOF' > $LARAVEL_DIR/.env.example
 # ---- App Ports ----
 APP_PORT=8080
 
@@ -237,7 +240,7 @@ REDIS_PASSWORD=null
 QUEUE_CONNECTION=redis
 EOF
 
-cat <<'EOF' > $LARAVEL_DIR/Dockerfile
+  cat <<'EOF' > $LARAVEL_DIR/Dockerfile
 FROM php:8.3-fpm
 
 RUN apt-get update && apt-get install -y \
@@ -255,7 +258,7 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 CMD ["supervisord", "-n"]
 EOF
 
-cat <<'EOF' > $LARAVEL_DIR/supervisord.conf
+  cat <<'EOF' > $LARAVEL_DIR/supervisord.conf
 [supervisord]
 nodaemon=true
 
@@ -272,7 +275,7 @@ stdout_logfile=/var/www/html/storage/logs/worker.log
 stderr_logfile=/var/www/html/storage/logs/worker_error.log
 EOF
 
-cat <<'EOF' > $LARAVEL_DIR/nginx/default.conf
+  cat <<'EOF' > $LARAVEL_DIR/nginx/default.conf
 server {
     listen 80;
     server_name localhost;
@@ -298,7 +301,7 @@ server {
 }
 EOF
 
-cat <<'EOF' > $LARAVEL_DIR/docker-compose.yml
+  cat <<'EOF' > $LARAVEL_DIR/docker-compose.yml
 services:
   nginx:
     image: nginx:alpine
@@ -335,13 +338,13 @@ networks:
   traefik_net:
     external: true
 EOF
+fi
 
-# ==============================================================================
 # FASTAPI TEMPLATE (Python → Local PostgreSQL / MongoDB)
-# ==============================================================================
-FASTAPI_DIR="$TEMPLATE_DIR/templates/fastapi"
+if [[ "$PROJECT_TYPE" == "fastapi" ]]; then
+  FASTAPI_DIR="$TEMPLATE_DIR/projects/fastapi"
 
-cat <<'EOF' > $FASTAPI_DIR/.env.example
+  cat <<'EOF' > $FASTAPI_DIR/.env.example
 # ---- App Ports ----
 APP_PORT=8000
 
@@ -356,7 +359,7 @@ REDIS_URL=redis://host.docker.internal:6379/0
 EOF
 
 
-cat <<'EOF' > $FASTAPI_DIR/Dockerfile
+  cat <<'EOF' > $FASTAPI_DIR/Dockerfile
 FROM python:3.14-slim
 
 WORKDIR /app
@@ -380,7 +383,7 @@ EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 EOF
 
-cat <<'EOF' > $FASTAPI_DIR/docker-compose.yml
+  cat <<'EOF' > $FASTAPI_DIR/docker-compose.yml
 services:
   app:
     build: .
@@ -407,7 +410,7 @@ networks:
     external: true
 EOF
 
-cat <<'EOF' > $FASTAPI_DIR/main.py
+  cat <<'EOF' > $FASTAPI_DIR/main.py
 from fastapi import FastAPI
 import os
 
@@ -421,13 +424,13 @@ def root():
 def health():
     return {"status": "healthy"}
 EOF
+fi
 
-# ==============================================================================
 # REACT TEMPLATE (Node/Vite — no DB needed, pure frontend)
-# ==============================================================================
-REACT_DIR="$TEMPLATE_DIR/templates/react"
+if [[ "$PROJECT_TYPE" == "react" ]]; then
+  REACT_DIR="$TEMPLATE_DIR/projects/react"
 
-cat <<'EOF' > $REACT_DIR/.env.example
+  cat <<'EOF' > $REACT_DIR/.env.example
 # ---- App Ports ----
 APP_PORT=5173
 
@@ -435,7 +438,7 @@ APP_PORT=5173
 VITE_API_URL=http://localhost:8000
 EOF
 
-cat <<'EOF' > $REACT_DIR/Dockerfile
+  cat <<'EOF' > $REACT_DIR/Dockerfile
 FROM node:24-alpine
 WORKDIR /app
 COPY package*.json ./
@@ -444,7 +447,7 @@ EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host"]
 EOF
 
-cat <<'EOF' > $REACT_DIR/docker-compose.yml
+  cat <<'EOF' > $REACT_DIR/docker-compose.yml
 services:
   app:
     build: .
@@ -469,13 +472,13 @@ networks:
   traefik_net:
     external: true
 EOF
+fi
 
-# ==============================================================================
 # GOLANG TEMPLATE (Go → Local PostgreSQL / Redis)
-# ==============================================================================
-GOLANG_DIR="$TEMPLATE_DIR/templates/golang"
+if [[ "$PROJECT_TYPE" == "golang" ]]; then
+  GOLANG_DIR="$TEMPLATE_DIR/projects/golang"
 
-cat <<'EOF' > $GOLANG_DIR/.env.example
+  cat <<'EOF' > $GOLANG_DIR/.env.example
 # ---- App Ports ----
 APP_PORT=8090
 
@@ -486,7 +489,7 @@ DATABASE_URL=postgresql://postgres:root@host.docker.internal:5432/{{PROJECT_NAME
 REDIS_URL=redis://host.docker.internal:6379/0
 EOF
 
-cat <<'EOF' > $GOLANG_DIR/Dockerfile
+  cat <<'EOF' > $GOLANG_DIR/Dockerfile
 FROM golang:1.22-alpine
 
 RUN apk add --no-cache git gcc musl-dev
@@ -502,7 +505,7 @@ EXPOSE 8090
 CMD ["go", "run", "."]
 EOF
 
-cat <<'EOF' > $GOLANG_DIR/docker-compose.yml
+  cat <<'EOF' > $GOLANG_DIR/docker-compose.yml
 services:
   app:
     build: .
@@ -528,6 +531,7 @@ networks:
   traefik_net:
     external: true
 EOF
+fi
 
 # ==============================================================================
 # TRAEFIK — Local domain reverse proxy
@@ -571,52 +575,111 @@ EOF
 
 # ==============================================================================
 # DONE
+# ============================================================================== 
+# README
 # ==============================================================================
-echo ""
-echo "============================================================"
-echo "  DONE! Workspace created at: $TEMPLATE_DIR"
-echo "============================================================"
-echo ""
-echo "  Structure:"
-echo "  $TEMPLATE_NAME/"
-echo "    templates/"
-echo "      laravel/       PHP 8.3 + Nginx + Supervisor"
-echo "      fastapi/       Python 3.14 + Uvicorn"
-echo "      react/         Node 24 + Vite"
-echo "      golang/        Go 1.22"
-echo "    docker/"
-echo "      traefik/       Local domain routing"
-echo "    projects/         Your actual projects go here"
-echo "    create_project.sh Helper to scaffold new projects"
-echo ""
-echo "  ALL databases (MySQL, PostgreSQL, MongoDB, Redis)"
-echo "  run on your LOCAL machine — NOT in Docker."
-echo "  Containers connect via 'host.docker.internal'"
-echo ""
-echo "============================================================"
-echo "  QUICK START"
-echo "============================================================"
-echo ""
-echo "  1. Create the Traefik network:"
-echo "     docker network create traefik_net"
-echo ""
-echo "  2. Start Traefik:"
-echo "     cd $TEMPLATE_DIR/docker/traefik && docker compose up -d"
-echo ""
-echo "  3. Create a project:"
-echo "     cd $TEMPLATE_DIR"
-echo "     ./create_project.sh laravel my-blog"
-echo "     ./create_project.sh fastapi ml-api"
-echo "     ./create_project.sh react dashboard"
-echo "     ./create_project.sh golang api-gateway"
-echo ""
-echo "  4. Edit .env, then start:"
-echo "     cd projects/my-blog && docker compose up -d --build"
-echo ""
-echo "  5. Add to /etc/hosts:"
-echo "     sudo sh -c 'echo \"127.0.0.1 my-blog.local ml-api.local dashboard.local\" >> /etc/hosts'"
-echo ""
-echo "  6. Ensure local DBs accept Docker connections:"
-echo "     See README.md for bind-address config"
-echo ""
-echo "============================================================"
+cat <<'READMEEOF' > README.md
+# Docker Dev Workspace
+
+## Architecture
+```
+Docker containers  =  App runtimes ONLY (PHP, Python, Node, Go)
+Local machine      =  All databases (MySQL, PostgreSQL, MongoDB, Redis, etc.)
+Traefik            =  Local domain routing (*.local)
+```
+
+## Why local databases?
+- Better performance (no Docker volume overhead)
+- Easier debugging & administration (use native CLI tools)
+- Single source of truth — all projects share the same DB server
+- No data loss from accidental `docker compose down -v`
+- Professional setup — mirrors how production infra is separated
+
+## How containers connect to local DB
+All docker-compose files use:
+```yaml
+extra_hosts:
+  - "host.docker.internal:host-gateway"
+```
+This maps `host.docker.internal` to your machine's IP inside the container.
+
+Your app config uses `host.docker.internal` as the DB host:
+```
+DB_HOST=host.docker.internal
+REDIS_HOST=host.docker.internal
+```
+
+## Prerequisite: Allow DB to accept connections from Docker
+Your local DB must listen on `0.0.0.0` (not just `127.0.0.1`).
+
+**MySQL** — `/etc/mysql/mysql.conf.d/mysqld.cnf`:
+```
+bind-address = 0.0.0.0
+```
+Then: `GRANT ALL ON *.* TO 'dev'@'172.%' IDENTIFIED BY 'password';`
+
+**PostgreSQL** — `postgresql.conf`:
+```
+listen_addresses = '*'
+```
+And in `pg_hba.conf`:
+```
+host all all 172.0.0.0/8 md5
+```
+
+**MongoDB** — `mongod.conf`:
+```
+net:
+  bindIp: 0.0.0.0
+```
+
+**Redis** — `/etc/redis/redis.conf`:
+```
+bind 0.0.0.0
+protected-mode no  # or set a password
+```
+
+After changes, restart each service: `sudo systemctl restart mysql postgresql mongod redis`
+
+## Creating a new project
+```bash
+./create_project.sh <project-type> <project-name>
+# Example:
+./create_project.sh laravel blog
+./create_project.sh fastapi analytics
+./create_project.sh react dashboard
+./create_project.sh golang api-gateway
+```
+
+## Start
+```bash
+# 1. Create the Traefik network (once):
+docker network create traefik_net
+
+# 2. Start Traefik (reverse proxy):
+cd docker/traefik && docker compose up -d
+
+# 3. Create a project (see above)
+
+# 4. Start a project:
+cd projects/<project-type>/<project-name>
+docker compose up -d --build
+```
+
+## Local domains (add to /etc/hosts)
+Add your project domains for local routing. Example:
+```
+127.0.0.1 blog.local analytics.local dashboard.local api-gateway.local
+```
+
+## Traefik Dashboard
+Access at: [http://localhost:8080/dashboard/](http://localhost:8080/dashboard/)
+
+## Notes
+- Each project is isolated under `projects/<type>/<project-name>`
+- Traefik is shared for all projects (runs once)
+- All databases run on your local machine, not in Docker
+- Edit `.env` in each project for DB credentials
+
+See this README for troubleshooting and advanced usage.
+READMEEOF

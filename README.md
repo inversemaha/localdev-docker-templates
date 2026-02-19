@@ -53,26 +53,16 @@ Running `setup_projectwise_template.sh` creates:
 ├── create_project.sh               # Scaffold new projects from templates
 ├── README.md                       # Workspace README with DB config guide
 │
-├── templates/                      # Base templates (don't edit directly)
-│   ├── laravel/                    # PHP 8.3 + Nginx + Supervisor
-│   │   ├── Dockerfile
-│   │   ├── docker-compose.yml
-│   │   ├── .env.example
-│   │   ├── supervisord.conf
-│   │   └── nginx/default.conf
-│   ├── fastapi/                    # Python 3.14 + Uvicorn
-│   │   ├── Dockerfile
-│   │   ├── docker-compose.yml
-│   │   ├── .env.example
-│   │   └── main.py
-│   ├── react/                      # Node 24 + Vite
-│   │   ├── Dockerfile
-│   │   ├── docker-compose.yml
-│   │   └── .env.example
-│   └── golang/                     # Go 1.22
-│       ├── Dockerfile
-│       ├── docker-compose.yml
-│       └── .env.example
+├── projects/                       # Project templates and your actual projects
+│   ├── laravel/                    # Laravel template (used as source for new projects)
+│   ├── fastapi/                    # FastAPI template (used as source for new projects)
+│   ├── react/                      # React template (used as source for new projects)
+│   ├── golang/                     # Golang template (used as source for new projects)
+│   ├── traefik/                    # Traefik reverse proxy
+│   ├── laravel/<project-name>/     # Your Laravel project instances
+│   ├── fastapi/<project-name>/     # Your FastAPI project instances
+│   ├── react/<project-name>/       # Your React project instances
+│   └── golang/<project-name>/      # Your Golang project instances
 │
 ├── docker/
 │   └── traefik/                    # Reverse proxy for local domains
@@ -420,3 +410,17 @@ make down P=ml-api
 make traefik-down
 make clean          # Remove unused containers/networks
 ```
+
+---
+
+## Project Structure and Traefik Usage
+
+- All generated project folders (laravel, fastapi, react, golang) are created under:
+  ```
+  projects/<project-type>/
+  ```
+- Traefik (local domain reverse proxy) is created once under:
+  ```
+  projects/traefik/
+  ```
+- Traefik is shared for all projects. You do NOT need to create a separate Traefik instance for each project. Just start Traefik once, and all your projects will be accessible via their local domains (e.g., fastapi.local, laravel.local).
