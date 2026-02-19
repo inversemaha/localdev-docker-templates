@@ -1,4 +1,3 @@
-
 # linuxmint-multidb-webstack
 
 **A modern local web development stack for Linux Mint:**
@@ -88,6 +87,17 @@ Running `setup_projectwise_template.sh` creates:
 
 ---
 
+## Additional Template Versions
+
+Two alternative template scripts are available:
+
+- **projectwise_template_arg/**: Uses command-line arguments to select the project type.
+- **projectwise_template_menu/**: Uses an interactive menu to select the project type.
+
+Each folder contains its own README.md and setup script. Use these for more flexible or interactive project generation.
+
+---
+
 ## Getting Started
 
 ### Step 1: Setup Host Machine (one-time)
@@ -144,6 +154,49 @@ cd projects/my-blog
 nano .env
 docker compose up -d --build
 ```
+
+---
+
+## How to Select and Generate Individual Project Templates
+
+### Command-line Argument Version (projectwise_template_arg)
+1. Navigate to the folder:
+   ```bash
+   cd projectwise_template_arg
+   ```
+2. Run the script with your desired project type:
+   ```bash
+   ./setup_projectwise_template.sh fastapi
+   ./setup_projectwise_template.sh laravel
+   ./setup_projectwise_template.sh react
+   ./setup_projectwise_template.sh golang
+   ```
+   Only the specified template will be generated.
+
+### Interactive Menu Version (projectwise_template_menu)
+1. Navigate to the folder:
+   ```bash
+   cd projectwise_template_menu
+   ```
+2. Run the script:
+   ```bash
+   ./setup_projectwise_template.sh
+   ```
+3. Select your desired project type (e.g., fastapi, laravel) from the menu.
+   Only the selected template will be generated.
+
+### Original Script
+1. Navigate to the workspace folder:
+   ```bash
+   cd LOCAL-MACHINE-SETUP-LINUX-MINT
+   ```
+2. Run the script with your desired project type:
+   ```bash
+   ./setup_projectwise_template.sh fastapi
+   ./setup_projectwise_template.sh laravel
+   ./setup_projectwise_template.sh react
+   ./setup_projectwise_template.sh golang
+   ```
 
 ---
 

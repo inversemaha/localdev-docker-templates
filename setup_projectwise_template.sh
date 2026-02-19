@@ -34,13 +34,36 @@ echo ""
 mkdir -p "$TEMPLATE_DIR"
 cd "$TEMPLATE_DIR"
 
-# Subfolders for each language/framework template
-mkdir -p templates/laravel/nginx
-mkdir -p templates/fastapi
-mkdir -p templates/react
-mkdir -p templates/golang
-mkdir -p docker/traefik
+# Command-line argument for project type
+PROJECT_TYPE="$1"
 
+if [[ -z "$PROJECT_TYPE" ]]; then
+  echo "Usage: $0 <project-type>"
+  echo "Available project types: fastapi, laravel, react, golang"
+  exit 1
+fi
+
+case "$PROJECT_TYPE" in
+  fastapi)
+    mkdir -p templates/fastapi
+    ;;
+  laravel)
+    mkdir -p templates/laravel/nginx
+    ;;
+  react)
+    mkdir -p templates/react
+    ;;
+  golang)
+    mkdir -p templates/golang
+    ;;
+  *)
+    echo "Unknown project type: $PROJECT_TYPE"
+    echo "Available project types: fastapi, laravel, react, golang"
+    exit 1
+    ;;
+esac
+
+mkdir -p docker/traefik
 touch README.md
 
 # ==============================================================================
