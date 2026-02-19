@@ -45,18 +45,20 @@ if [[ -z "$PROJECT_TYPE" || -z "$PROJECT_NAME" ]]; then
   exit 1
 fi
 
+PROJECT_DIR="$TEMPLATE_DIR/projects/$PROJECT_TYPE/$PROJECT_NAME"
+
 case "$PROJECT_TYPE" in
   fastapi)
-    mkdir -p projects/fastapi
+    mkdir -p "$PROJECT_DIR"
     ;;
   laravel)
-    mkdir -p projects/laravel/nginx
+    mkdir -p "$PROJECT_DIR/nginx"
     ;;
   react)
-    mkdir -p projects/react
+    mkdir -p "$PROJECT_DIR"
     ;;
   golang)
-    mkdir -p projects/golang
+    mkdir -p "$PROJECT_DIR"
     ;;
   *)
     echo "Unknown project type: $PROJECT_TYPE"
@@ -66,158 +68,12 @@ case "$PROJECT_TYPE" in
 esac
 
 mkdir -p docker/traefik
-touch README.md
-
-# ==============================================================================
-# README
-# ==============================================================================
-cat <<'READMEEOF' > README.md
-# Docker Dev Workspace
-
-## Architecture
-```
-Docker containers  =  App runtimes ONLY (PHP, Python, Node, Go)
-Local machine      =  All databases (MySQL, PostgreSQL, MongoDB, Redis, etc.)
-Traefik            =  Local domain routing (*.local)
-```
-
-## Why local databases?
-- Better performance (no Docker volume overhead)
-- Easier debugging & administration (use native CLI tools)
-- Single source of truth — all projects share the same DB server
-- No data loss from accidental `docker compose down -v`
-- Professional setup — mirrors how production infra is separated
-
-## How containers connect to local DB
-All docker-compose files use:
-```yaml
-extra_hosts:
-  - "host.docker.internal:host-gateway"
-```
-This maps `host.docker.internal` to your machine's IP inside the container.
-
-Your app config uses `host.docker.internal` as the DB host:
-```
-DB_HOST=host.docker.internal
-REDIS_HOST=host.docker.internal
-```
-
-## Prerequisite: Allow DB to accept connections from Docker
-Your local DB must listen on `0.0.0.0` (not just `127.0.0.1`).
-
-**MySQL** — `/etc/mysql/mysql.conf.d/mysqld.cnf`:
-```
-bind-address = 0.0.0.0
-```
-Then: `GRANT ALL ON *.* TO 'dev'@'172.%' IDENTIFIED BY 'password';`
-
-**PostgreSQL** — `postgresql.conf`:
-```
-listen_addresses = '*'
-```
-And in `pg_hba.conf`:
-```
-host all all 172.0.0.0/8 md5
-```
-
-**MongoDB** — `mongod.conf`:
-```
-net:
-  bindIp: 0.0.0.0
-```
-
-**Redis** — `/etc/redis/redis.conf`:
-```
-bind 0.0.0.0
-protected-mode no  # or set a password
-```
-
-After changes, restart each service: `sudo systemctl restart mysql postgresql mongod redis`
-
-## Creating a new project
-```bash
-./create_project.sh laravel my-app
-./create_project.sh fastapi ml-service
-./create_project.sh react dashboard
-./create_project.sh golang api-gateway
-```
-
-## Start
-```bash
-cd docker/traefik && docker compose up -d         # Start Traefik first
-cd projects/my-app && docker compose up -d --build  # Start any project
-```
-
-## Local domains (add to /etc/hosts)
-```
-127.0.0.1 laravel.local fastapi.local react.local golang.local
-```
-READMEEOF
-
-# ============================================================================== 
-# CREATE PROJECT SCRIPT — clones a template into projects/<type>/<project-name>
-# ==============================================================================
-cat <<'CPEOF' > "$TEMPLATE_DIR/create_project.sh"
-#!/bin/bash
-set -e
-
-WORKSPACE_DIR="$(cd "$(dirname "$0")" && pwd)"
-TEMPLATES_DIR="$WORKSPACE_DIR/projects"
-PROJECTS_DIR="$WORKSPACE_DIR/projects"
-
-TEMPLATE_TYPE="$1"
-PROJECT_NAME="$2"
-
-if [[ -z "$TEMPLATE_TYPE" || -z "$PROJECT_NAME" ]]; then
-  echo "Usage: ./create_project.sh <project-type> <project-name>"
-  echo ""
-  echo "Available project types:"
-  ls -1 "$TEMPLATES_DIR" | grep -v traefik
-  exit 1
-fi
-
-if [[ ! -d "$TEMPLATES_DIR/$TEMPLATE_TYPE" ]]; then
-  echo "ERROR: Template type '$TEMPLATE_TYPE' not found."
-  echo "Available: $(ls -1 "$TEMPLATES_DIR" | grep -v traefik | tr '\n' ' ')"
-  exit 1
-fi
-
-TARGET="$PROJECTS_DIR/$TEMPLATE_TYPE/$PROJECT_NAME"
-if [[ -d "$TARGET" ]]; then
-  echo "ERROR: Project '$PROJECT_NAME' already exists at $TARGET"
-  exit 1
-fi
-
-echo "Creating project '$PROJECT_NAME' of type '$TEMPLATE_TYPE'..."
-mkdir -p "$PROJECTS_DIR/$TEMPLATE_TYPE"
-cp -r "$TEMPLATES_DIR/$TEMPLATE_TYPE" "$TARGET"
-
-# Replace placeholder container names with project-specific names
-find "$TARGET" -type f -name '*.yml' -exec sed -i "s/{{PROJECT_NAME}}/$PROJECT_NAME/g" {} +
-find "$TARGET" -type f -name '*.conf' -exec sed -i "s/{{PROJECT_NAME}}/$PROJECT_NAME/g" {} +
-find "$TARGET" -type f -name '.env*' -exec sed -i "s/{{PROJECT_NAME}}/$PROJECT_NAME/g" {} +
-
-# Create .env from .env.example if it exists
-if [[ -f "$TARGET/.env.example" ]]; then
-  cp "$TARGET/.env.example" "$TARGET/.env"
-fi
-
-echo ""
-echo "Project created at: $TARGET"
-echo ""
-echo "Next steps:"
-echo "  cd $TARGET"
-echo "  # Edit .env with your local DB credentials"
-echo "  docker compose up -d --build"
-echo ""
-CPEOF
-chmod +x "$TEMPLATE_DIR/create_project.sh"
 
 # ==============================================================================
 # LARAVEL TEMPLATE (Nginx + PHP-FPM → Local MySQL + Redis)
 # ==============================================================================
 if [[ "$PROJECT_TYPE" == "laravel" ]]; then
-  LARAVEL_DIR="$TEMPLATE_DIR/projects/laravel"
+  LARAVEL_DIR="$PROJECT_DIR"
   mkdir -p "$LARAVEL_DIR/nginx"
   cat <<'EOF' > $LARAVEL_DIR/.env.example
 # ---- App Ports ----
@@ -342,7 +198,7 @@ fi
 
 # FASTAPI TEMPLATE (Python → Local PostgreSQL / MongoDB)
 if [[ "$PROJECT_TYPE" == "fastapi" ]]; then
-  FASTAPI_DIR="$TEMPLATE_DIR/projects/fastapi"
+  FASTAPI_DIR="$PROJECT_DIR"
 
   cat <<'EOF' > $FASTAPI_DIR/.env.example
 # ---- App Ports ----
@@ -360,7 +216,7 @@ EOF
 
 
   cat <<'EOF' > $FASTAPI_DIR/Dockerfile
-FROM python:3.14-slim
+FROM python:3.13-slim
 
 WORKDIR /app
 
@@ -428,7 +284,7 @@ fi
 
 # REACT TEMPLATE (Node/Vite — no DB needed, pure frontend)
 if [[ "$PROJECT_TYPE" == "react" ]]; then
-  REACT_DIR="$TEMPLATE_DIR/projects/react"
+  REACT_DIR="$PROJECT_DIR"
 
   cat <<'EOF' > $REACT_DIR/.env.example
 # ---- App Ports ----
@@ -476,7 +332,7 @@ fi
 
 # GOLANG TEMPLATE (Go → Local PostgreSQL / Redis)
 if [[ "$PROJECT_TYPE" == "golang" ]]; then
-  GOLANG_DIR="$TEMPLATE_DIR/projects/golang"
+  GOLANG_DIR="$PROJECT_DIR"
 
   cat <<'EOF' > $GOLANG_DIR/.env.example
 # ---- App Ports ----
@@ -574,112 +430,28 @@ networks:
 EOF
 
 # ==============================================================================
-# DONE
-# ============================================================================== 
-# README
+# REPLACE {{PROJECT_NAME}} PLACEHOLDERS WITH ACTUAL PROJECT NAME
 # ==============================================================================
-cat <<'READMEEOF' > README.md
-# Docker Dev Workspace
+echo "Replacing {{PROJECT_NAME}} placeholders with '$PROJECT_NAME'..."
+find "$PROJECT_DIR" -type f \( -name '*.yml' -o -name '*.conf' -o -name '.env*' \) \
+  -exec sed -i "s/{{PROJECT_NAME}}/$PROJECT_NAME/g" {} +
 
-## Architecture
-```
-Docker containers  =  App runtimes ONLY (PHP, Python, Node, Go)
-Local machine      =  All databases (MySQL, PostgreSQL, MongoDB, Redis, etc.)
-Traefik            =  Local domain routing (*.local)
-```
+# Create .env from .env.example if it exists
+if [[ -f "$PROJECT_DIR/.env.example" ]]; then
+  cp "$PROJECT_DIR/.env.example" "$PROJECT_DIR/.env"
+fi
 
-## Why local databases?
-- Better performance (no Docker volume overhead)
-- Easier debugging & administration (use native CLI tools)
-- Single source of truth — all projects share the same DB server
-- No data loss from accidental `docker compose down -v`
-- Professional setup — mirrors how production infra is separated
-
-## How containers connect to local DB
-All docker-compose files use:
-```yaml
-extra_hosts:
-  - "host.docker.internal:host-gateway"
-```
-This maps `host.docker.internal` to your machine's IP inside the container.
-
-Your app config uses `host.docker.internal` as the DB host:
-```
-DB_HOST=host.docker.internal
-REDIS_HOST=host.docker.internal
-```
-
-## Prerequisite: Allow DB to accept connections from Docker
-Your local DB must listen on `0.0.0.0` (not just `127.0.0.1`).
-
-**MySQL** — `/etc/mysql/mysql.conf.d/mysqld.cnf`:
-```
-bind-address = 0.0.0.0
-```
-Then: `GRANT ALL ON *.* TO 'dev'@'172.%' IDENTIFIED BY 'password';`
-
-**PostgreSQL** — `postgresql.conf`:
-```
-listen_addresses = '*'
-```
-And in `pg_hba.conf`:
-```
-host all all 172.0.0.0/8 md5
-```
-
-**MongoDB** — `mongod.conf`:
-```
-net:
-  bindIp: 0.0.0.0
-```
-
-**Redis** — `/etc/redis/redis.conf`:
-```
-bind 0.0.0.0
-protected-mode no  # or set a password
-```
-
-After changes, restart each service: `sudo systemctl restart mysql postgresql mongod redis`
-
-## Creating a new project
-```bash
-./create_project.sh <project-type> <project-name>
-# Example:
-./create_project.sh laravel blog
-./create_project.sh fastapi analytics
-./create_project.sh react dashboard
-./create_project.sh golang api-gateway
-```
-
-## Start
-```bash
-# 1. Create the Traefik network (once):
-docker network create traefik_net
-
-# 2. Start Traefik (reverse proxy):
-cd docker/traefik && docker compose up -d
-
-# 3. Create a project (see above)
-
-# 4. Start a project:
-cd projects/<project-type>/<project-name>
-docker compose up -d --build
-```
-
-## Local domains (add to /etc/hosts)
-Add your project domains for local routing. Example:
-```
-127.0.0.1 blog.local analytics.local dashboard.local api-gateway.local
-```
-
-## Traefik Dashboard
-Access at: [http://localhost:8080/dashboard/](http://localhost:8080/dashboard/)
-
-## Notes
-- Each project is isolated under `projects/<type>/<project-name>`
-- Traefik is shared for all projects (runs once)
-- All databases run on your local machine, not in Docker
-- Edit `.env` in each project for DB credentials
-
-See this README for troubleshooting and advanced usage.
-READMEEOF
+# ==============================================================================
+# DONE
+# ==============================================================================
+echo ""
+echo "============================================================"
+echo "  Project '$PROJECT_NAME' ($PROJECT_TYPE) created at:"
+echo "  $PROJECT_DIR"
+echo "============================================================"
+echo ""
+echo "Next steps:"
+echo "  cd $PROJECT_DIR"
+echo "  # Edit .env with your local DB credentials"
+echo "  docker compose up -d --build"
+echo ""
