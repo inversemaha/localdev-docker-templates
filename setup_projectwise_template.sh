@@ -394,7 +394,10 @@ fi
 # ==============================================================================
 TRAEFIK_DIR="$TEMPLATE_DIR/docker/traefik"
 
-cat <<'EOF' > $TRAEFIK_DIR/traefik.yml
+# Only create Traefik config if it doesn't exist (to support multiple projects)
+if [[ ! -f "$TRAEFIK_DIR/traefik.yml" ]]; then
+  echo "Creating Traefik configuration for the first time..."
+  cat <<'EOF' > $TRAEFIK_DIR/traefik.yml
 entryPoints:
   web:
     address: ":80"
@@ -408,7 +411,7 @@ api:
   insecure: true
 EOF
 
-cat <<'EOF' > $TRAEFIK_DIR/docker-compose.yml
+  cat <<'EOF' > $TRAEFIK_DIR/docker-compose.yml
 services:
   traefik:
     image: traefik:v3.0
@@ -428,6 +431,16 @@ networks:
     name: traefik_net
     driver: bridge
 EOF
+
+  echo "Traefik configuration created successfully!"
+  echo ""
+  echo "🚀 IMPORTANT: Start Traefik once (run this in the traefik directory):"
+  echo "   cd $TRAEFIK_DIR && docker-compose up -d"
+  echo ""
+else
+  echo "Traefik configuration already exists - reusing for multiple projects ✅"
+  echo ""
+fi
 
 # ==============================================================================
 # REPLACE {{PROJECT_NAME}} PLACEHOLDERS WITH ACTUAL PROJECT NAME
@@ -450,8 +463,23 @@ echo "  Project '$PROJECT_NAME' ($PROJECT_TYPE) created at:"
 echo "  $PROJECT_DIR"
 echo "============================================================"
 echo ""
-echo "Next steps:"
-echo "  cd $PROJECT_DIR"
-echo "  # Edit .env with your local DB credentials"
-echo "  docker compose up -d --build"
+echo "🚀 Next steps:"
+echo ""
+echo "1️⃣ Start Traefik (if not already running):"
+echo "   cd $TRAEFIK_DIR && docker-compose up -d"
+echo ""
+echo "2️⃣ Start this project:"
+echo "   cd $PROJECT_DIR"
+echo "   # Edit .env with your local DB credentials"
+echo "   docker compose up -d --build"
+echo ""
+echo "3️⃣ Access your project:"
+echo "   🌐 http://$PROJECT_NAME.local"
+echo "   📊 Traefik Dashboard: http://localhost:8080"
+echo ""
+echo "💡 MULTIPLE PROJECTS:"
+echo "   ✅ Run this script again to create more projects"
+echo "   ✅ All projects can run simultaneously with unique domains"
+echo "   ✅ Each project gets: projectname.local"
+echo "   ⚡ Start/stop projects independently with docker compose"
 echo ""

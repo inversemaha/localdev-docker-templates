@@ -107,14 +107,50 @@ All templates include:
 
 ---
 
-## Additional Template Versions
+## 🚀 Multiple Projects Support
+
+**NEW**: All scripts now support creating and running multiple projects simultaneously!
+
+### How It Works
+- **First project**: Creates shared Traefik configuration  
+- **Additional projects**: Reuse existing Traefik (no conflicts)
+- **Unique domains**: Each project gets `projectname.local`
+- **Independent lifecycle**: Start/stop projects individually
+- **Shared dashboard**: View all projects at `localhost:8080`
+
+### Example Multi-Project Setup
+```bash
+# Create multiple projects
+./setup_projectwise_template.sh fastapi api-backend
+./setup_projectwise_template.sh react web-frontend  
+./setup_projectwise_template.sh laravel admin-panel
+
+# Start Traefik once
+cd /media/bot/INT-LOCAL/docker-dev-workspace/docker/traefik
+docker-compose up -d
+
+# Start projects (all run simultaneously) 
+cd ../projects/fastapi/api-backend && docker compose up -d
+cd ../laravel/admin-panel && docker compose up -d
+cd ../react/web-frontend && docker compose up -d
+
+# Access projects
+# → http://api-backend.local (FastAPI)
+# → http://admin-panel.local (Laravel)
+# → http://web-frontend.local (React)
+# → http://localhost:8080 (Traefik dashboard)
+```
+
+---
+
+## Template Versions (All Support Multiple Projects)
 
 Three identical template scripts (same output, different input method):
 
-| Script | Input Method | Usage |
-|--------|-------------|-------|
+| Script | Input Method | Usage Example |
+|--------|-------------|---------------|
 | `./setup_projectwise_template.sh` (root) | CLI args | `./setup_projectwise_template.sh fastapi blog` |
-| `projectwise_template_arg/` | CLI args | `./setup_projectwise_template.sh fastapi blog` |
+| `projectwise_template_arg/` | CLI args | `./setup_projectwise_template.sh laravel shop` |
 | `projectwise_template_menu/` | Interactive menu | `./setup_projectwise_template.sh` then select |
 
 Each folder contains its own README.md and setup script.
@@ -139,15 +175,30 @@ docker --version
 docker compose version
 ```
 
-### Step 2: Generate a Project
+### Step 2: Generate Projects (Multiple Projects Supported)
+
+**✨ New Feature**: Create multiple projects that run simultaneously with unique domains!
 
 ```bash
 chmod +x setup_projectwise_template.sh
 ./setup_projectwise_template.sh fastapi blog
-./setup_projectwise_template.sh laravel my-blog
+./setup_projectwise_template.sh laravel portfolio  
 ./setup_projectwise_template.sh react dashboard
 ./setup_projectwise_template.sh golang api-gateway
 ```
+
+**Multiple Projects Workflow:**
+1. **First project** creates Traefik configuration
+2. **Additional projects** reuse existing Traefik (no conflicts)
+3. **Each project** gets unique domain: `projectname.local`
+4. **All projects** can run simultaneously
+
+**Access Your Projects:**
+- `http://blog.local` - FastAPI project  
+- `http://portfolio.local` - Laravel project
+- `http://dashboard.local` - React project
+- `http://api-gateway.local` - Golang project
+- `http://localhost:8080` - Traefik dashboard (shows all active projects)
 
 This creates a ready project at `/media/bot/INT-LOCAL/docker-dev-workspace/projects/<type>/<name>/`
 with all `{{PROJECT_NAME}}` placeholders replaced and `.env` auto-generated.
@@ -181,7 +232,35 @@ docker compose up -d
 
 Dashboard: http://localhost:8080
 
-### Step 6: Start Your Project
+### Step 3: Start Traefik (Once) + Projects
+
+**Start Traefik reverse proxy once:**
+```bash
+cd /media/bot/INT-LOCAL/docker-dev-workspace/docker/traefik
+docker-compose up -d
+```
+
+**Start individual projects:**
+```bash
+# FastAPI project
+cd /media/bot/INT-LOCAL/docker-dev-workspace/projects/fastapi/blog
+docker compose up -d --build
+
+# Laravel project (simultaneously)
+cd /media/bot/INT-LOCAL/docker-dev-workspace/projects/laravel/portfolio
+docker compose up -d --build
+
+# React project (simultaneously) 
+cd /media/bot/INT-LOCAL/docker-dev-workspace/projects/react/dashboard
+docker compose up -d --build
+```
+
+**Stop individual projects:**
+```bash
+cd /path/to/project && docker compose down
+```
+
+**Keep Traefik running** - it manages domains for all projects!
 
 ```bash
 cd /media/bot/INT-LOCAL/docker-dev-workspace/projects/fastapi/blog
