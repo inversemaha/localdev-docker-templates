@@ -1,163 +1,52 @@
-# linuxmint-multidb-webstack
+# 🚀 Docker Development Workspace - MEMAHA Branch
 
-**A modern local web development stack for Linux Mint:**
-Run PHP, Python, Node, and Go apps in Docker containers, while all databases (MySQL, PostgreSQL, MongoDB, Redis, etc.) run natively on your host for maximum performance and realism. Includes ready-to-use templates for Laravel, FastAPI, React, and Golang, with Traefik for local domain routing.
+**A streamlined Docker development workspace generator** that simplifies the creation of multi-project development environments. It follows the philosophy of keeping applications in Docker containers while databases run on the host machine for better performance and easier management.
 
----
+## ✨ Features
 
-## Local Database Installation
+- **Interactive Menu System** - Easy project type selection and configuration
+- **Multiple Project Types** - Laravel, FastAPI, React, Go
+- **Traefik Integration** - Automatic reverse proxy setup for clean local domains
+- **Host-based Databases** - PostgreSQL, MySQL, Redis run on host for optimal performance
+- **Multiple Projects Support** - All projects can run simultaneously with unique domains
+- **Development-First** - Hot reloading, volume mounts, and debugging support
 
-For scripts and instructions to install and configure MySQL, PostgreSQL, MongoDB, and Redis on Linux Mint, see the reference repository:
+## 🏗️ Architecture Philosophy
 
-> [inversemaha/linuxmint-multidb-webstack](https://github.com/inversemaha/linuxmint-multidb-webstack)
-
----
-
-A professional local development environment where **Docker runs app containers only** and **all databases run natively on the host machine**.
-
----
-
-## Philosophy
-
-```
-Docker         =  App runtimes ONLY (PHP, Python, Node, Go)
-Local machine  =  All databases (MySQL, PostgreSQL, MongoDB, Redis)
-Traefik        =  Local domain routing (*.local)
-```
-
-**Why not databases in Docker?**
-- Better disk I/O performance (no volume overhead)
-- Easier debugging with native CLI tools
-- No data loss from accidental `docker compose down -v`
-- Single DB instance shared across projects
-- Mirrors production architecture (app servers separate from DB servers)
-
----
-
-## Repository Structure
-
-```
-LOCAL-MACHINE-SETUP-LINUX-MINT/
-├── setup_local_machine.sh          # Install Docker + NVM (one-time)
-├── setup_projectwise_template.sh   # Generate project from template (main script)
-├── Makefile.sh                     # Universal project commands
-├── projectwise_template_arg/       # Alternative: command-line arg version
-│   ├── setup_projectwise_template.sh
-│   └── README.md
-├── projectwise_template_menu/      # Alternative: interactive menu version
-│   ├── setup_projectwise_template.sh
-│   └── README.md
-└── README.md                       # This file
+```mermaid
+graph TB
+    A[Local Machine] --> B[Docker Containers - Apps Only]
+    A --> C[Host Services - Databases]
+    A --> D[Traefik Proxy]
+    
+    B --> E[FastAPI Container]
+    B --> F[React Container]
+    B --> G[Go Container]
+    
+    C --> H[PostgreSQL]
+    C --> I[MySQL]  
+    C --> J[Redis]
+    
+    D --> K[project1.local]
+    D --> L[project2.local]
+    D --> M[api.local]
+    
+    E -.->|host.docker.internal| H
+    F -.->|API calls| E
+    G -.->|host.docker.internal| H
 ```
 
-### Generated Workspace Structure
+### Why This Architecture?
 
-Running `setup_projectwise_template.sh <type> <name>` creates:
+- **🔥 Performance**: Direct database connections without Docker networking overhead
+- **💾 Data Persistence**: Databases persist across container rebuilds
+- **🔧 Easy Management**: Use native database tools and GUI clients
+- **🌐 Clean URLs**: Each project gets its own `.local` domain
+- **⚡ Fast Rebuilds**: Only application containers need rebuilding
 
-```
-/media/bot/INT-LOCAL/docker-dev-workspace/
-├── docker/
-│   └── traefik/                    # Shared reverse proxy (start once)
-│       ├── docker-compose.yml
-│       └── traefik.yml
-│
-└── projects/                       # All projects organized by type
-    ├── laravel/
-    │   └── <project-name>/         # e.g. my-blog
-    │       ├── docker-compose.yml
-    │       ├── Dockerfile
-    │       ├── .env / .env.example
-    │       ├── supervisord.conf
-    │       └── nginx/default.conf
-    ├── fastapi/
-    │   └── <project-name>/         # e.g. blog
-    │       ├── docker-compose.yml
-    │       ├── Dockerfile
-    │       ├── .env / .env.example
-    │       └── main.py
-    ├── react/
-    │   └── <project-name>/         # e.g. dashboard
-    │       ├── docker-compose.yml
-    │       ├── Dockerfile
-    │       ├── .env / .env.example
-    └── golang/
-        └── <project-name>/         # e.g. api-gateway
-            ├── docker-compose.yml
-            ├── Dockerfile
-            ├── .env / .env.example
-```
+## 🚀 Quick Start
 
----
-
-## What Each Template Generates
-
-| Type | Base Image | Files Created | DB Support |
-|------|-----------|---------------|------------|
-| **Laravel** | `php:8.3-fpm` | Dockerfile, docker-compose.yml, supervisord.conf, nginx/default.conf, .env | MySQL + Redis |
-| **FastAPI** | `python:3.13-slim` | Dockerfile, docker-compose.yml, main.py, .env | PostgreSQL + MongoDB + Redis |
-| **React** | `node:24-alpine` | Dockerfile, docker-compose.yml, .env | None (frontend only) |
-| **Golang** | `golang:1.22-alpine` | Dockerfile, docker-compose.yml, .env | PostgreSQL + Redis |
-
-All templates include:
-- `{{PROJECT_NAME}}` placeholder auto-replacement
-- `.env` auto-generated from `.env.example`
-- `host.docker.internal` for DB connectivity
-- Traefik labels for `<project-name>.local` domain routing
-- `traefik_net` external network
-
----
-
-## 🚀 Multiple Projects Support
-
-**NEW**: All scripts now support creating and running multiple projects simultaneously!
-
-### How It Works
-- **First project**: Creates shared Traefik configuration  
-- **Additional projects**: Reuse existing Traefik (no conflicts)
-- **Unique domains**: Each project gets `projectname.local`
-- **Independent lifecycle**: Start/stop projects individually
-- **Shared dashboard**: View all projects at `localhost:8080`
-
-### Example Multi-Project Setup
-```bash
-# Create multiple projects
-./setup_projectwise_template.sh fastapi api-backend
-./setup_projectwise_template.sh react web-frontend  
-./setup_projectwise_template.sh laravel admin-panel
-
-# Start Traefik once
-cd /media/bot/INT-LOCAL/docker-dev-workspace/docker/traefik
-docker-compose up -d
-
-# Start projects (all run simultaneously) 
-cd ../projects/fastapi/api-backend && docker compose up -d
-cd ../laravel/admin-panel && docker compose up -d
-cd ../react/web-frontend && docker compose up -d
-
-# Access projects
-# → http://api-backend.local (FastAPI)
-# → http://admin-panel.local (Laravel)
-# → http://web-frontend.local (React)
-# → http://localhost:8080 (Traefik dashboard)
-```
-
----
-
-## Template Versions (All Support Multiple Projects)
-
-Three identical template scripts (same output, different input method):
-
-| Script | Input Method | Usage Example |
-|--------|-------------|---------------|
-| `./setup_projectwise_template.sh` (root) | CLI args | `./setup_projectwise_template.sh fastapi blog` |
-| `projectwise_template_arg/` | CLI args | `./setup_projectwise_template.sh laravel shop` |
-| `projectwise_template_menu/` | Interactive menu | `./setup_projectwise_template.sh` then select |
-
-Each folder contains its own README.md and setup script.
-
----
-
-## Getting Started
+## 🚀 Getting Started
 
 ### Step 1: Setup Host Machine (one-time)
 
@@ -175,336 +64,321 @@ docker --version
 docker compose version
 ```
 
-### Step 2: Generate Projects (Multiple Projects Supported)
-
-**✨ New Feature**: Create multiple projects that run simultaneously with unique domains!
+### Installation
 
 ```bash
-chmod +x setup_projectwise_template.sh
-./setup_projectwise_template.sh fastapi blog
-./setup_projectwise_template.sh laravel portfolio  
-./setup_projectwise_template.sh react dashboard
-./setup_projectwise_template.sh golang api-gateway
+# Clone the repository and switch to memaha branch
+git clone <repository-url>
+cd localdev-docker-templates
+git checkout memaha
+
+# Make scripts executable  
+chmod +x menu.sh
+chmod +x Makefile.sh
+chmod +x setup_local_machine.sh
+
+# Run the setup
+./menu.sh
 ```
 
-**Multiple Projects Workflow:**
-1. **First project** creates Traefik configuration
-2. **Additional projects** reuse existing Traefik (no conflicts)
-3. **Each project** gets unique domain: `projectname.local`
-4. **All projects** can run simultaneously
+## 📋 What Each Template Generates
 
-**Access Your Projects:**
-- `http://blog.local` - FastAPI project  
-- `http://portfolio.local` - Laravel project
-- `http://dashboard.local` - React project
-- `http://api-gateway.local` - Golang project
-- `http://localhost:8080` - Traefik dashboard (shows all active projects)
+| Type | Base Image | Files Created | DB Support |
+|------|-----------|---------------|-----------|
+| **Laravel** | `php:8.3-fpm` | Dockerfile, docker-compose.yml, supervisord.conf, nginx/default.conf, .env | MySQL + Redis |
+| **FastAPI** | `python:3.13-slim` | Dockerfile, docker-compose.yml, main.py, .env | PostgreSQL + MongoDB + Redis |
+| **React** | `node:24-alpine` | Dockerfile, docker-compose.yml, .env | None (frontend only) |
+| **Golang** | `golang:1.22-alpine` | Dockerfile, docker-compose.yml, .env | PostgreSQL + Redis |
 
-This creates a ready project at `/media/bot/INT-LOCAL/docker-dev-workspace/projects/<type>/<name>/`
-with all `{{PROJECT_NAME}}` placeholders replaced and `.env` auto-generated.
+All templates include:
+- `{{PROJECT_NAME}}` placeholder auto-replacement
+- `.env` auto-generated from `.env.example`
+- `host.docker.internal` for DB connectivity
+- Traefik labels for `<project-name>.local` domain routing
+- `traefik_net` external network
 
-### Step 3: Create the Database
+## 🛠️ Using the Makefile
 
-The setup script does NOT create the actual database — create it on your host:
+**Makefile.sh is automatically copied** to your workspace when you run the menu script!
+
+### Project Management Commands
 
 ```bash
-# PostgreSQL
-sudo -u postgres createdb blog
+# Infrastructure Management
+./Makefile.sh traefik-up              # Start Traefik proxy
+./Makefile.sh traefik-down            # Stop Traefik proxy
+./Makefile.sh traefik-logs            # View Traefik logs
 
-# MySQL
-mysql -u root -p -e "CREATE DATABASE my_blog;"
+# Project Commands  
+./Makefile.sh up PROJECT=my-api       # Start specific project
+./Makefile.sh down PROJECT=my-api     # Stop specific project
+./Makefile.sh logs PROJECT=my-api     # View project logs
+./Makefile.sh build PROJECT=my-api    # Rebuild project
+./Makefile.sh shell PROJECT=my-api    # Open shell in container
 
-# MongoDB (auto-creates on first write, no action needed)
+# Workspace Management
+./Makefile.sh list                    # List all projects
+./Makefile.sh status                  # Show running containers
+./Makefile.sh clean                   # Clean unused Docker resources
 ```
 
-### Step 4: Configure Local Domains
+## � Multiple Projects Support
 
+**All scripts support creating and running multiple projects simultaneously!**
+
+### How It Works
+- **First project**: Creates shared Traefik configuration  
+- **Additional projects**: Reuse existing Traefik (no conflicts)
+- **Unique domains**: Each project gets `projectname.local`
+- **Independent lifecycle**: Start/stop projects individually
+- **Shared dashboard**: View all projects at `localhost:8080`
+
+### Example Multi-Project Setup
 ```bash
-sudo sh -c 'echo "127.0.0.1 blog.local my-blog.local dashboard.local api-gateway.local" >> /etc/hosts'
-```
+# Create multiple projects using the interactive menu
+./menu.sh  # Select FastAPI, name: api-backend
+./menu.sh  # Select React, name: web-frontend  
+./menu.sh  # Select Laravel, name: admin-panel
 
-### Step 5: Start Traefik
-
-```bash
-cd /media/bot/INT-LOCAL/docker-dev-workspace/docker/traefik
-docker compose up -d
-```
-
-Dashboard: http://localhost:8080
-
-### Step 3: Start Traefik (Once) + Projects
-
-**Start Traefik reverse proxy once:**
-```bash
-cd /media/bot/INT-LOCAL/docker-dev-workspace/docker/traefik
+# Start Traefik once
+cd /media/bot/INT-LOCAL1/docker-dev-workspace/docker/traefik
 docker-compose up -d
+
+# Start projects (all run simultaneously) 
+cd ../projects/fastapi/api-backend && docker compose up -d
+cd ../laravel/admin-panel && docker compose up -d
+cd ../react/web-frontend && docker compose up -d
+
+# Access projects
+# → http://api-backend.local (FastAPI)
+# → http://admin-panel.local (Laravel)
+# → http://web-frontend.local (React)
+# → http://localhost:8080 (Traefik dashboard)
 ```
 
-**Start individual projects:**
-```bash
-# FastAPI project
-cd /media/bot/INT-LOCAL/docker-dev-workspace/projects/fastapi/blog
-docker compose up -d --build
+## 🎯 Project Templates
 
-# Laravel project (simultaneously)
-cd /media/bot/INT-LOCAL/docker-dev-workspace/projects/laravel/portfolio
-docker compose up -d --build
+### FastAPI Template
 
-# React project (simultaneously) 
-cd /media/bot/INT-LOCAL/docker-dev-workspace/projects/react/dashboard
-docker compose up -d --build
-```
+**Features:**
+- Python 3.13 with FastAPI and Uvicorn
+- PostgreSQL/MongoDB/Redis connectivity
+- CORS middleware pre-configured
+- Hot reloading enabled
+- Health check endpoints
 
-**Stop individual projects:**
-```bash
-cd /path/to/project && docker compose down
-```
+**Default packages:**
+- `fastapi` - Modern web framework
+- `uvicorn` - ASGI server  
+- `sqlalchemy` - SQL toolkit
+- `psycopg2-binary` - PostgreSQL adapter
+- `pymongo` + `motor` - MongoDB drivers
+- `redis` - Redis client
+- `pydantic-settings` - Environment management
 
-**Keep Traefik running** - it manages domains for all projects!
-
-```bash
-cd /media/bot/INT-LOCAL/docker-dev-workspace/projects/fastapi/blog
-nano .env          # Edit DB credentials if needed
-docker compose up -d --build
-```
-
----
-
-## How Containers Connect to Local Databases
-
-All docker-compose files include:
-
-```yaml
-extra_hosts:
-  - "host.docker.internal:host-gateway"
-```
-
-This maps `host.docker.internal` inside the container to your host machine's IP. App configs use it as the DB host:
-
+**Environment variables:**
 ```env
-# Laravel
-DB_HOST=host.docker.internal
-
-# FastAPI
-DATABASE_URL=postgresql://postgres:root@host.docker.internal:5432/blog
-
-# Golang
-DATABASE_URL=postgresql://postgres:root@host.docker.internal:5432/api-gateway
+DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/projectname
+MONGO_URL=mongodb://host.docker.internal:27017/projectname
+REDIS_URL=redis://host.docker.internal:6379/0
 ```
 
-> **Prerequisite:** Your local databases must listen on `0.0.0.0` (not just `127.0.0.1`).
-> See the workspace README at `/media/bot/INT-LOCAL/docker-dev-workspace/README.md` for detailed bind-address configuration.
+### React Template
+
+**Features:**
+- Node.js 20 with Vite build system
+- TypeScript support
+- Hot module replacement
+- Environment-based configuration
+- CORS-ready for API integration
+
+**Default packages:**
+- `react` + `react-dom` - UI framework
+- `vite` - Build tool
+- `@vitejs/plugin-react` - React integration
+- `typescript` - Type safety
+
+**Environment variables:**
+```env
+VITE_API_URL=http://localhost:8000
+VITE_APP_NAME=projectname
+```
+
+### Go Template
+
+**Features:**
+- Go 1.21 with Gin web framework
+- PostgreSQL and Redis connectivity
+- Environment-based configuration
+- Health check endpoints
+- Hot reloading via volume mounts
+
+**Default packages:**
+- `gin-gonic/gin` - Web framework
+- `lib/pq` - PostgreSQL driver
+- `go-redis/v9` - Redis client
+- `godotenv` - Environment loading
+
+**Environment variables:**
+```env
+DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/projectname
+REDIS_URL=redis://host.docker.internal:6379/0
+```
+
+## 🗄️ Database Setup
+
+### PostgreSQL
+
+```bash
+# Install PostgreSQL (Ubuntu/Debian)
+sudo apt update && sudo apt install postgresql postgresql-contrib
+
+# Start service
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+
+# Create user and databases
+sudo -u postgres createuser --interactive --pwprompt
+sudo -u postgres createdb projectname
+```
+
+### MySQL
+
+```bash
+# Install MySQL (Ubuntu/Debian)
+sudo apt update && sudo apt install mysql-server
+
+# Secure installation
+sudo mysql_secure_installation
+
+# Create database
+mysql -u root -p
+CREATE DATABASE projectname;
+```
+
+### Redis
+
+```bash
+# Install Redis (Ubuntu/Debian)
+sudo apt update && sudo apt install redis-server
+
+# Start service  
+sudo systemctl start redis-server
+sudo systemctl enable redis-server
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+Set these in your shell profile (`.bashrc`, `.zshrc`):
+
+```bash
+# Workspace location (default: /media/bot/INT-LOCAL1)
+export MEMAHA_BASE_DIR="/path/to/your/workspace"
+
+# Workspace name (default: docker-workspace)
+export MEMAHA_WORKSPACE="my-development-workspace"
+```
+
+### Custom Project Templates
+
+To add new project types, extend the `menu.sh` script:
+
+1. **Add menu option** in `show_menu()` function
+2. **Create template function** following naming convention `create_TYPENAME_project()`
+3. **Add case** in main menu switch statement
+4. **Update README** with template documentation
+
+Example template function structure:
+
+```bash
+create_newtype_project() {
+    local project_name="$1"
+    local project_dir="$WORKSPACE_DIR/projects/newtype/$project_name"
+    
+    log_info "Creating NewType project: $project_name"
+    mkdir -p "$project_dir"
+    
+    # Create .env, Dockerfile, docker-compose.yml
+    # Add template-specific files
+    
+    log_success "NewType project '$project_name' created successfully"
+}
+```
+
+## 🚦 Troubleshooting
+
+### Common Issues
+
+1. **"Cannot connect to database"**
+   - Ensure database service is running on host
+   - Check firewall settings
+   - Verify `host.docker.internal` resolution
+
+2. **"Traefik dashboard not accessible"**
+   - Ensure port 8080 is not in use
+   - Check Docker service status
+   - Verify Traefik container is running
+
+3. **"Project.local domain not working"**
+   - Add entries to `/etc/hosts`:
+     ```
+     127.0.0.1 projectname.local
+     ```
+   - Or use direct port access
+
+4. **"Permission denied" errors**
+   - Make scripts executable: `chmod +x menu.sh makefile.sh`
+   - Check Docker socket permissions
+   - Ensure user is in docker group
+
+### Logs and Debugging
+
+```bash
+# View application logs
+./makefile.sh logs PROJECT=projectname
+
+# View Traefik logs  
+./makefile.sh traefik-logs
+
+# Check container status
+docker ps
+
+# Inspect networks
+docker network ls
+```
+
+## 🤝 Contributing
+
+1. **Fork the repository**
+2. **Create feature branch**: `git checkout -b feature/amazing-template`
+3. **Follow coding standards** and existing patterns
+4. **Test thoroughly** with different project types
+5. **Update documentation** for new features
+6. **Submit pull request** with clear description
+
+### Development Guidelines
+
+- **Keep templates minimal** but functional
+- **Use environment variables** for configuration
+- **Follow Docker best practices** (multi-stage builds, small images)
+- **Maintain consistency** across project types
+- **Document all options** and environment variables
+
+## 📝 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- **Docker** for containerization platform
+- **Traefik** for reverse proxy capabilities
+- **FastAPI**, **React**, **Go** communities for excellent frameworks
+- **Contributors** who help improve this template system
 
 ---
 
-## Using the Makefile
+**Happy Coding!** 🎉
 
-Copy `Makefile.sh` to the workspace as `Makefile`, or use it from this repo.
-
-### Syntax: `make <command> P=<type>/<name>`
-
-> **Important:** The `P=` parameter uses the format `<type>/<name>` matching the project path structure.
-
-### Docker Compose
-
-| Command | Description |
-|---------|-------------|
-| `make up P=fastapi/blog` | Build & start project |
-| `make start P=fastapi/blog` | Start (no rebuild) |
-| `make stop P=fastapi/blog` | Stop containers |
-| `make down P=fastapi/blog` | Remove containers |
-| `make restart P=fastapi/blog` | Stop + rebuild + start |
-| `make ps P=fastapi/blog` | Show container status |
-| `make logs P=fastapi/blog` | Follow all logs |
-| `make logs-app P=fastapi/blog` | Follow app container logs |
-
-### Shell Access
-
-| Command | Description |
-|---------|-------------|
-| `make shell P=fastapi/blog` | Open `sh` in app container |
-| `make bash P=laravel/my-blog` | Open `bash` in app container |
-
-### Traefik
-
-| Command | Description |
-|---------|-------------|
-| `make traefik-up` | Start Traefik |
-| `make traefik-down` | Stop Traefik |
-| `make traefik-logs` | Follow Traefik logs |
-
-### Laravel / PHP
-
-| Command | Description |
-|---------|-------------|
-| `make migrate P=laravel/my-blog` | Run migrations |
-| `make migrate-fresh P=laravel/my-blog` | Fresh migrate + seed |
-| `make seed P=laravel/my-blog` | Run seeders |
-| `make artisan P=laravel/my-blog CMD="route:list"` | Any artisan command |
-| `make composer P=laravel/my-blog CMD="require sanctum"` | Any composer command |
-
-### FastAPI / Python
-
-| Command | Description |
-|---------|-------------|
-| `make test P=fastapi/blog` | Run pytest |
-| `make pip P=fastapi/blog CMD="install pandas"` | Run pip |
-| `make python P=fastapi/blog CMD="manage.py"` | Run python |
-
-### React / Node
-
-| Command | Description |
-|---------|-------------|
-| `make install P=react/dashboard` | npm install |
-| `make build P=react/dashboard` | npm run build |
-| `make dev P=react/dashboard` | npm run dev |
-| `make npm P=react/dashboard CMD="run lint"` | Any npm command |
-
-### Golang
-
-| Command | Description |
-|---------|-------------|
-| `make go-run P=golang/api-gw` | go run . |
-| `make go-build P=golang/api-gw` | go build |
-| `make go-test P=golang/api-gw` | go test ./... |
-
-### Utility
-
-| Command | Description |
-|---------|-------------|
-| `make list` | List all projects & templates |
-| `make clean` | Prune unused Docker resources |
-| `make clean-all` | Full Docker cleanup (images too) |
-
----
-
-## Architecture
-
-### Laravel Stack
-
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Traefik   │────▶│    Nginx    │────▶│  PHP-FPM    │
-│   :80       │     │   :80       │     │   :9000     │
-└─────────────┘     └─────────────┘     └──────┬──────┘
-                          Docker                │
-─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─
-                       Local Machine            │
-                      ┌─────────────┐    ┌──────┴──────┐
-                      │    Redis    │    │    MySQL    │
-                      │   :6379    │    │   :3306    │
-                      └─────────────┘    └─────────────┘
-```
-
-### FastAPI Stack
-
-```
-┌─────────────┐     ┌─────────────┐
-│   Traefik   │────▶│   FastAPI   │
-│   :80       │     │   Uvicorn   │
-└─────────────┘     └──────┬──────┘
-                     Docker │
-─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─ ─ ─ ─ ─ ─
-                  Local Machine
-              ┌────────────┼────────────┐
-              ▼            ▼            ▼
-        ┌──────────┐  ┌─────────┐  ┌─────────┐
-        │PostgreSQL│  │ MongoDB │  │  Redis  │
-        │  :5432   │  │ :27017  │  │  :6379  │
-        └──────────┘  └─────────┘  └─────────┘
-```
-
-### React Stack
-
-```
-┌─────────────┐     ┌─────────────┐
-│   Traefik   │────▶│    Vite     │
-│   :80       │     │   :5173     │
-└─────────────┘     └─────────────┘
-                      (no DB needed)
-```
-
-### Golang Stack
-
-```
-┌─────────────┐     ┌─────────────┐
-│   Traefik   │────▶│   Go App   │
-│   :80       │     │   :8090     │
-└─────────────┘     └──────┬──────┘
-                     Docker │
-─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─ ─ ─
-                  Local Machine
-              ┌────────────┴────────────┐
-              ▼                         ▼
-        ┌──────────┐             ┌─────────┐
-        │PostgreSQL│             │  Redis  │
-        │  :5432   │             │  :6379  │
-        └──────────┘             └─────────┘
-```
-
----
-
-## Troubleshooting
-
-### Docker Permission Denied
-
-Logout and login after `setup_local_machine.sh`, or:
-
-```bash
-newgrp docker
-```
-
-### Port Already in Use
-
-```bash
-sudo lsof -i :80
-sudo systemctl stop apache2 nginx  # if conflicting
-```
-
-### Container Can't Reach Local DB
-
-1. Check DB is listening on `0.0.0.0`:
-   ```bash
-   sudo ss -tlnp | grep -E '3306|5432|27017|6379'
-   ```
-2. Check DB allows connections from Docker subnet (`172.x.x.x`)
-3. Test from inside container:
-   ```bash
-   docker compose exec app sh
-   # PostgreSQL test:
-   apt-get update && apt-get install -y postgresql-client
-   psql -h host.docker.internal -U postgres -d blog
-   ```
-
-### Changes Not Reflecting
-
-Rebuild after Dockerfile changes:
-
-```bash
-docker compose down
-docker compose up -d --build
-```
-
-### Complete Reset
-
-```bash
-cd projects/fastapi/blog && docker compose down
-cd ../../../docker/traefik && docker compose down
-docker system prune -f
-```
-
----
-
-## Project Structure and Traefik Usage
-
-- All projects are created under:
-  ```
-  projects/<project-type>/<project-name>/
-  ```
-  Example: `projects/fastapi/blog/`, `projects/laravel/my-blog/`
-- Traefik (local domain reverse proxy) lives at:
-  ```
-  docker/traefik/
-  ```
-- Traefik is shared for all projects. Start it once, and all your projects are accessible via their local domains (e.g., `blog.local`, `my-blog.local`).
-- See the workspace README at `/media/bot/INT-LOCAL/docker-dev-workspace/README.md` for detailed step-by-step project management instructions.
+For questions, issues, or feature requests, please open an issue on the repository.
