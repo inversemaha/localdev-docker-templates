@@ -48,13 +48,13 @@ Run the script with project type and project name:
 
 3. **Start Traefik (once):**
    ```bash
-   cd /media/bot/INT-LOCAL/docker-dev-workspace/docker/traefik
+   cd /media/bot/INT-LOCAL1/docker-dev-workspace/docker/traefik
    docker-compose up -d
    ```
 
 4. **Start your project:**
    ```bash
-   cd /media/bot/INT-LOCAL/docker-dev-workspace/projects/fastapi/my-api
+   cd /media/bot/INT-LOCAL1/docker-dev-workspace/projects/fastapi/my-api
    # Edit .env with your DB settings
    docker compose up -d --build
    ```
@@ -82,13 +82,13 @@ Run the script with project type and project name:
 
 **Start individual projects:**
 ```bash
-cd /media/bot/INT-LOCAL/docker-dev-workspace/projects/<type>/<name>
+cd /media/bot/INT-LOCAL1/docker-dev-workspace/projects/<type>/<name>
 docker compose up -d
 ```
 
 **Stop individual projects:**
 ```bash
-cd /media/bot/INT-LOCAL/docker-dev-workspace/projects/<type>/<name>
+cd /media/bot/INT-LOCAL1/docker-dev-workspace/projects/<type>/<name>
 docker compose down
 ```
 

@@ -3,11 +3,12 @@
 # ==============================================================================
 #
 # Usage:
-#   make up P=my-blog                     # Build & start a project
-#   make logs P=my-blog                   # Follow logs
-#   make shell P=my-blog                  # Shell into app container
-#   make artisan P=my-blog CMD=migrate    # Run artisan command
-#   make pip P=ml-api CMD="install pandas" # Run pip inside container
+#   make up P=my-blog                     # Auto-find & start project
+#   make up P=my-blog TYPE=laravel        # Start specific type project
+#   make logs P=shop TYPE=fastapi         # Follow logs
+#   make shell P=dashboard TYPE=react     # Shell into app container
+#   make artisan P=shop CMD=migrate       # Run artisan command (Laravel)
+#   make pip P=ml-api CMD="install pandas" # Run pip inside container (Python)
 #
 # Architecture:
 #   Docker  = App containers ONLY
@@ -18,17 +19,29 @@
 # ------------------------------
 # Variables
 # ------------------------------
-WORKSPACE?=/media/bot/INT-LOCAL/docker-dev-workspace
+WORKSPACE?=/media/bot/INT-LOCAL1/docker-dev-workspace
 P?=
+TYPE?=
 CONTAINER?=app
 TRAEFIK_PATH?=$(WORKSPACE)/docker/traefik
 
-# Derive compose file from project name
+# Derive compose file from project name (search across all types if TYPE not specified)
 ifneq ($(P),)
-  PROJECT_PATH=$(WORKSPACE)/projects/$(P)
-  COMPOSE=docker compose -f $(PROJECT_PATH)/docker-compose.yml
+  ifneq ($(TYPE),)
+    # Direct path if TYPE is specified: make up P=blog TYPE=fastapi
+    PROJECT_PATH=$(WORKSPACE)/projects/$(TYPE)/$(P)
+    COMPOSE=docker compose -f $(PROJECT_PATH)/docker-compose.yml
+  else
+    # Auto-find project across all types: make up P=blog
+    PROJECT_PATH=$(shell find $(WORKSPACE)/projects -name "$(P)" -type d | head -1)
+    ifeq ($(PROJECT_PATH),)
+      COMPOSE=@echo "ERROR: Project '$(P)' not found. Use TYPE=<type> or check project name." && exit 1 &&
+    else
+      COMPOSE=docker compose -f $(PROJECT_PATH)/docker-compose.yml
+    endif
+  endif
 else
-  COMPOSE=@echo "ERROR: specify project with P=<name>" && exit 1 &&
+  COMPOSE=@echo "ERROR: specify project with P=<name> [TYPE=<type>]" && exit 1 &&
 endif
 
 # ------------------------------
@@ -158,11 +171,24 @@ go-test:
 
 # List all projects
 list:
-	@echo "Projects:"
-	@ls -1 $(WORKSPACE)/projects 2>/dev/null || echo "  (none yet)"
+	@echo "Projects by type:"
+	@for type in $(WORKSPACE)/projects/*/; do \
+		if [ -d "$$type" ]; then \
+			type_name=$$(basename "$$type"); \
+			echo "  $$type_name:"; \
+			for project in "$$type"*/; do \
+				if [ -d "$$project" ]; then \
+					project_name=$$(basename "$$project"); \
+					echo "    - $$project_name"; \
+				fi; \
+			done; \
+		fi; \
+	done 2>/dev/null || echo "  (no projects yet)"
 	@echo ""
-	@echo "Templates:"
-	@ls -1 $(WORKSPACE)/templates
+	@echo "Usage examples:"
+	@echo "  make up P=blog              # Auto-find project"
+	@echo "  make up P=blog TYPE=fastapi # Specify type"
+	@echo "  make logs P=shop TYPE=laravel    # View logs"
 
 clean:
 	docker system prune -f

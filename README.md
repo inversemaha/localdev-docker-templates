@@ -55,7 +55,7 @@ LOCAL-MACHINE-SETUP-LINUX-MINT/
 Running `setup_projectwise_template.sh <type> <name>` creates:
 
 ```
-/media/bot/INT-LOCAL/docker-dev-workspace/
+/media/bot/INT-LOCAL1/docker-dev-workspace/
 ├── docker/
 │   └── traefik/                    # Shared reverse proxy (start once)
 │       ├── docker-compose.yml
@@ -126,7 +126,7 @@ All templates include:
 ./setup_projectwise_template.sh laravel admin-panel
 
 # Start Traefik once
-cd /media/bot/INT-LOCAL/docker-dev-workspace/docker/traefik
+cd /media/bot/INT-LOCAL1/docker-dev-workspace/docker/traefik
 docker-compose up -d
 
 # Start projects (all run simultaneously) 
@@ -200,7 +200,7 @@ chmod +x setup_projectwise_template.sh
 - `http://api-gateway.local` - Golang project
 - `http://localhost:8080` - Traefik dashboard (shows all active projects)
 
-This creates a ready project at `/media/bot/INT-LOCAL/docker-dev-workspace/projects/<type>/<name>/`
+This creates a ready project at `/media/bot/INT-LOCAL1/docker-dev-workspace/projects/<type>/<name>/`
 with all `{{PROJECT_NAME}}` placeholders replaced and `.env` auto-generated.
 
 ### Step 3: Create the Database
@@ -226,7 +226,7 @@ sudo sh -c 'echo "127.0.0.1 blog.local my-blog.local dashboard.local api-gateway
 ### Step 5: Start Traefik
 
 ```bash
-cd /media/bot/INT-LOCAL/docker-dev-workspace/docker/traefik
+cd /media/bot/INT-LOCAL1/docker-dev-workspace/docker/traefik
 docker compose up -d
 ```
 
@@ -236,22 +236,22 @@ Dashboard: http://localhost:8080
 
 **Start Traefik reverse proxy once:**
 ```bash
-cd /media/bot/INT-LOCAL/docker-dev-workspace/docker/traefik
+cd /media/bot/INT-LOCAL1/docker-dev-workspace/docker/traefik
 docker-compose up -d
 ```
 
 **Start individual projects:**
 ```bash
 # FastAPI project
-cd /media/bot/INT-LOCAL/docker-dev-workspace/projects/fastapi/blog
+cd /media/bot/INT-LOCAL1/docker-dev-workspace/projects/fastapi/blog
 docker compose up -d --build
 
 # Laravel project (simultaneously)
-cd /media/bot/INT-LOCAL/docker-dev-workspace/projects/laravel/portfolio
+cd /media/bot/INT-LOCAL1/docker-dev-workspace/projects/laravel/portfolio
 docker compose up -d --build
 
 # React project (simultaneously) 
-cd /media/bot/INT-LOCAL/docker-dev-workspace/projects/react/dashboard
+cd /media/bot/INT-LOCAL1/docker-dev-workspace/projects/react/dashboard
 docker compose up -d --build
 ```
 
@@ -263,7 +263,7 @@ cd /path/to/project && docker compose down
 **Keep Traefik running** - it manages domains for all projects!
 
 ```bash
-cd /media/bot/INT-LOCAL/docker-dev-workspace/projects/fastapi/blog
+cd /media/bot/INT-LOCAL1/docker-dev-workspace/projects/fastapi/blog
 nano .env          # Edit DB credentials if needed
 docker compose up -d --build
 ```
@@ -293,7 +293,7 @@ DATABASE_URL=postgresql://postgres:root@host.docker.internal:5432/api-gateway
 ```
 
 > **Prerequisite:** Your local databases must listen on `0.0.0.0` (not just `127.0.0.1`).
-> See the workspace README at `/media/bot/INT-LOCAL/docker-dev-workspace/README.md` for detailed bind-address configuration.
+> See the workspace README at `/media/bot/INT-LOCAL1/docker-dev-workspace/README.md` for detailed bind-address configuration.
 
 ---
 
@@ -507,4 +507,4 @@ docker system prune -f
   docker/traefik/
   ```
 - Traefik is shared for all projects. Start it once, and all your projects are accessible via their local domains (e.g., `blog.local`, `my-blog.local`).
-- See the workspace README at `/media/bot/INT-LOCAL/docker-dev-workspace/README.md` for detailed step-by-step project management instructions.
+- See the workspace README at `/media/bot/INT-LOCAL1/docker-dev-workspace/README.md` for detailed step-by-step project management instructions.

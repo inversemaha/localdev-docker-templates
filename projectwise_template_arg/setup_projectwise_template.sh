@@ -18,7 +18,7 @@ set -e
 # ------------------------------
 # VARIABLES
 # ------------------------------
-BASE_DIR="/media/bot/INT-LOCAL"
+BASE_DIR="/media/bot/INT-LOCAL1"
 TEMPLATE_NAME="docker-dev-workspace"
 TEMPLATE_DIR="$BASE_DIR/$TEMPLATE_NAME"
 
@@ -462,6 +462,21 @@ if [[ -f "$PROJECT_DIR/.env.example" ]]; then
 fi
 
 # ==============================================================================
+# COPY ENHANCED MAKEFILE
+# ==============================================================================
+echo "Copying enhanced Makefile to workspace..."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MAKEFILE_SOURCE="$SCRIPT_DIR/../Makefile.sh"
+
+if [[ -f "$MAKEFILE_SOURCE" ]]; then
+  cp "$MAKEFILE_SOURCE" "$TEMPLATE_DIR/Makefile"
+  chmod +x "$TEMPLATE_DIR/Makefile"
+  echo "✅ Enhanced Makefile copied successfully!"
+else
+  echo "⚠️  Warning: Makefile.sh not found in parent directory"
+fi
+
+# ==============================================================================
 # DONE
 # ==============================================================================
 echo ""
@@ -489,4 +504,14 @@ echo "   ✅ Run this script again to create more projects"
 echo "   ✅ All projects can run simultaneously with unique domains"
 echo "   ✅ Each project gets: projectname.local"
 echo "   ⚡ Start/stop projects independently with docker compose"
+echo ""
+echo "🛠️  ENHANCED MAKEFILE COMMANDS (from workspace directory):"
+echo "   make up P=$PROJECT_NAME              # Auto-find & start project"
+echo "   make up P=$PROJECT_NAME TYPE=$PROJECT_TYPE   # Explicit type (faster)"
+echo "   make logs P=$PROJECT_NAME           # Follow logs"
+echo "   make shell P=$PROJECT_NAME          # Shell into container"
+echo "   make list                     # Show all projects by type"
+echo "   make traefik-up              # Start Traefik reverse proxy"
+echo ""
+echo "📖 Full documentation: $TEMPLATE_DIR/README.md"
 echo ""
